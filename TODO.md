@@ -8,17 +8,17 @@ CONTINUOUS IMPROVEMENTS :
 
 NEEDED :
 
-* GIST LINK indicator (on/off)
+* GIST LINK indicator : are github credentials currently configured ?
 
-* ONLINE/OFFLINE indicator
+* ONLINE/OFFLINE indicator : a simple green/red dot on the footer
 
-* AUTO PULL AT OPENING, AUTO PUSH AFTER X ACTION - IF ONLINE
+* AUTO PULL AT OPENING, AUTO PUSH AFTER X ACTION - if GIST configured AND online
 
-* Mobile integration : footer doesn't appear fully on Pixel 9a (buttons missing, brand ok).
+* Mobile integration : footer doesn't appear fully on Pixel 9a (buttons missing, brand ok)
 
 TO BE CONSIDERED :
 
-* Mobile integration : how ? PWA (with free github page ?)
+* Mobile integration : how ? PWA (with free github page) ?
 
 ---
 
