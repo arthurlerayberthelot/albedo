@@ -1,10 +1,24 @@
-# TODO (SANS ORDRE PARTICULIER)
+# TODO
 
 CONTINUOUS IMPROVEMENTS :
 
 * Refactoring du code de base pour résilience et optimisation des performances
 * Refactoring du code pour simplicité, lisibilité et maintenabilité
 * Revue de sécurité
+
+NEEDED :
+
+* GIST LINK indicator (on/off)
+
+* ONLINE/OFFLINE indicator
+
+* AUTO PULL AT OPENING, AUTO PUSH AFTER X ACTION - IF ONLINE
+
+* Mobile integration : footer doesn't appear fully on Pixel 9a (buttons missing, brand ok).
+
+TO BE CONSIDERED :
+
+* Mobile integration : how ? PWA (with free github page ?)
 
 ---
 
