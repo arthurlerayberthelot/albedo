@@ -1,21 +1,8 @@
 # TODO (SANS ORDRE PARTICULIER)
 
-MANDATORY (BEFORE ANYTHING ELSE) :
+CONTINUOUS IMPROVEMENTS :
 
-* GitHub Gist integration for auto sync between devices
+* Fix "&news" new feature ("erreur réseau")
 * Refactoring du code de base pour résilience et optimisation des performances
+* Refactoring du code pour simplicité, lisibilité et maintenabilité
 * Revue de sécurité
-
-Future features :
-
-NEEDED : 
-
-* import json into current base (integration)
-* custom view export
-* complex queries (AND, OR, NOT)
-
-TO BE CONSIDERED :
-
-* &meteo : query historical meteorologic data
-* &news : query french public domain historical news titles
-* think about introducing a "geolocation" logic (map ?, coordinates ?)
