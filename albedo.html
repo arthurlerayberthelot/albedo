@@ -3,7 +3,7 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="Content-Security-Policy"
         content="default-src 'none'; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob: https://upload.wikimedia.org; connect-src 'self' https://fr.wiktionary.org https://fr.wikipedia.org https://api.crossref.org https://api.github.com https://geocoding-api.open-meteo.com https://archive-api.open-meteo.com; script-src 'unsafe-inline';">
     <title>ALBEDO</title>
@@ -596,6 +596,65 @@
 
         .block.has-color .wiki-img {
             border: 1px solid color-mix(in srgb, var(--b-ink) 15%, transparent);
+        }
+
+        /* ========================================================================== */
+        /* --- RESPONSIVE (Mobile) ---                                                */
+        /* ========================================================================== */
+        @media (max-width: 520px) {
+
+            /* Header: tighten vertical padding */
+            header {
+                padding: 14px 0;
+            }
+
+            /* Footer: two-row stack instead of single crowded row */
+            .footer-row {
+                flex-direction: column;
+                gap: 10px;
+                align-items: stretch;
+            }
+
+            /* Top row: brand + stats side by side */
+            .deck-left {
+                justify-content: space-between;
+                width: 100%;
+            }
+
+            /* Right group becomes a column: stats above buttons */
+            .deck-right {
+                flex-direction: column;
+                gap: 8px;
+                width: 100%;
+            }
+
+            .stats {
+                text-align: left;
+            }
+
+            /* Control buttons: span full width evenly */
+            .controls {
+                gap: 0;
+                justify-content: space-between;
+                width: 100%;
+            }
+
+            /* Minimum 44px touch targets (HIG / WCAG 2.5.5) */
+            .ctrl-btn {
+                padding: 10px 4px;
+                font-size: 12px;
+                min-height: 44px;
+                flex: 1;
+                text-align: center;
+            }
+
+            /* Block action buttons: always visible on touch
+               (hover doesn't exist on touch — opacity:0 makes them unreachable) */
+            .action-btn {
+                opacity: 0.5;
+                padding: 4px 6px;
+                font-size: 16px;
+            }
         }
     </style>
 </head>
