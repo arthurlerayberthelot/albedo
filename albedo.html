@@ -472,7 +472,7 @@
             flex-shrink: 0;
             background: var(--glass);
             border-top: 1px solid var(--border);
-            padding: 16px 0;
+            padding: 12px 0;
             z-index: 50;
         }
 
@@ -493,8 +493,8 @@
 
         .brand {
             font-weight: 700;
-            letter-spacing: 0.5px;
-            color: var(--ink);
+            letter-spacing: 0.2px;
+            color: var(--meta);
         }
 
         .base-name {
@@ -505,7 +505,6 @@
         .deck-right {
             display: flex;
             align-items: center;
-            gap: 20px;
         }
 
         .stats {
@@ -513,23 +512,26 @@
             font-size: 10px;
             color: var(--meta);
             font-weight: 500;
-            text-align: right;
+        }
+
+        .stats.divider {
+            opacity: 0.4;
         }
 
         .controls {
             display: flex;
-            gap: 16px;
+            gap: 12px;
         }
 
         .ctrl-btn {
             background: none;
             border: none;
             padding: 0;
-            font-family: var(--font-ui);
-            font-size: 11px;
+            font-family: var(--font-code);
+            font-size: 10px;
             font-weight: 600;
-            color: var(--ink);
-            opacity: 0.4;
+            color: var(--meta);
+            opacity: 0.7;
             cursor: pointer;
             text-transform: uppercase;
             letter-spacing: 0.5px;
@@ -538,6 +540,7 @@
 
         .ctrl-btn:hover {
             opacity: 1;
+            color: var(--ink);
         }
 
         .ctrl-btn.danger:hover {
@@ -662,25 +665,21 @@
             /* Footer: two-row stack instead of single crowded row */
             .footer-row {
                 flex-direction: column;
-                gap: 10px;
+                gap: 12px;
                 align-items: stretch;
             }
 
-            /* Top row: brand + stats side by side */
+            /* Top row: wrap nicely and center */
             .deck-left {
-                justify-content: space-between;
+                justify-content: center;
+                flex-wrap: wrap;
                 width: 100%;
-            }
-
-            /* Right group becomes a column: stats above buttons */
-            .deck-right {
-                flex-direction: column;
                 gap: 8px;
-                width: 100%;
             }
 
-            .stats {
-                text-align: left;
+            /* Right group becomes full width wrapper for buttons */
+            .deck-right {
+                width: 100%;
             }
 
             /* Control buttons: span full width evenly */
@@ -693,7 +692,7 @@
             /* Minimum 44px touch targets (HIG / WCAG 2.5.5) */
             .ctrl-btn {
                 padding: 10px 4px;
-                font-size: 12px;
+                font-size: 11px;
                 min-height: 44px;
                 flex: 1;
                 text-align: center;
@@ -734,10 +733,11 @@
                 <span id="gist-indicator" title="GitHub Gist Connected"></span>
                 <span id="net-indicator" class="is-online" title="Network Status"></span>
                 <span id="sync-date" title="Last Sync Date"></span>
+                <span class="stats divider">·</span>
+                <span class="stats" id="stats">0 · 0 KB</span>
             </div>
 
             <div class="deck-right">
-                <div class="stats" id="stats">0 · 0 KB</div>
                 <div class="controls">
                     <input type="file" id="upload-trigger" accept=".json">
                     <button class="ctrl-btn" onclick="sys.api.sync()">Sync</button>
