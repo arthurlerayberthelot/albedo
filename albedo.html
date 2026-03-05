@@ -91,7 +91,7 @@
             color: var(--ink);
             font-family: var(--font-ui);
             margin: 0;
-            height: 100vh;
+            height: 100dvh;
             display: flex;
             flex-direction: column;
             overflow: hidden;
@@ -543,6 +543,35 @@
             display: none;
         }
 
+        /* --- INDICATORS --- */
+        #gist-indicator,
+        #net-indicator {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            margin-left: 8px;
+            vertical-align: middle;
+        }
+
+        #gist-indicator {
+            display: none;
+            background-color: var(--ink);
+            opacity: 0.7;
+        }
+
+        .has-gist #gist-indicator {
+            display: inline-block;
+        }
+
+        #net-indicator.is-online {
+            background-color: var(--c-green-ink);
+        }
+
+        #net-indicator.is-offline {
+            background-color: var(--danger);
+        }
+
         /* ========================================================================== */
         /* --- UTILS & MODIFIERS ---                                                  */
         /* ========================================================================== */
@@ -680,6 +709,8 @@
             <div class="deck-left">
                 <span class="brand">ALBEDO</span>
                 <span class="base-name" id="base-label">PRIMARY</span>
+                <span id="gist-indicator" title="GitHub Gist Connected"></span>
+                <span id="net-indicator" class="is-online" title="Network Status"></span>
             </div>
 
             <div class="deck-right">
@@ -1022,6 +1053,9 @@
                             this.parent.applyTheme();
                         }
                     });
+
+                    window.addEventListener('online', () => this.parent.updateNetworkStatus());
+                    window.addEventListener('offline', () => this.parent.updateNetworkStatus());
                 },
 
                 setupCommander() {
@@ -1180,6 +1214,7 @@
                                     this.parent.meta.gistToken = creds[0];
                                     this.parent.meta.gistId = creds[1];
                                     this.parent.saveMeta();
+                                    this.parent.updateGistStatus();
                                     this.parent.notify("GitHub config saved");
                                 } else {
                                     this.parent.notify("Error: &github: <TOKEN> <GIST_ID>");
@@ -1268,6 +1303,29 @@
                 this.api.init(this);
                 this.events.init(this);
                 this.applyTheme();
+                this.updateNetworkStatus();
+                this.updateGistStatus();
+            },
+
+            updateNetworkStatus() {
+                const netInd = document.getElementById('net-indicator');
+                if (netInd) {
+                    if (navigator.onLine) {
+                        netInd.className = 'is-online';
+                        netInd.title = 'Online';
+                    } else {
+                        netInd.className = 'is-offline';
+                        netInd.title = 'Offline';
+                    }
+                }
+            },
+
+            updateGistStatus() {
+                if (this.meta.gistToken && this.meta.gistId) {
+                    document.body.classList.add('has-gist');
+                } else {
+                    document.body.classList.remove('has-gist');
+                }
             },
 
             applyTheme() {

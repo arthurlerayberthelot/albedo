@@ -8,13 +8,15 @@ CONTINUOUS IMPROVEMENTS :
 
 NEEDED :
 
-* GIST LINK indicator : are github credentials currently configured ?
+[x] GIST LINK indicator : are github credentials currently configured ?
 
-* ONLINE/OFFLINE indicator : a simple green/red dot on the footer
+[x] ONLINE/OFFLINE indicator : a simple green/red dot on the footer
+
+* Current indicators are too big, kind of ugly. Dots should be smaller. Gist indicator is ambiguous (grey but connected ?)
 
 * AUTO PULL AT OPENING, AUTO PUSH AFTER X ACTION - if GIST configured AND online
 
-* Mobile integration : footer doesn't appear fully on Pixel 9a (buttons missing, brand ok)
+[x] Mobile integration : footer doesn't appear fully on Pixel 9a (buttons missing, brand ok)
 
 TO BE CONSIDERED :
 
