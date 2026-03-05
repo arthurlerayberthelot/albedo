@@ -128,3 +128,15 @@ Albedo supports three display modes: `auto`, `dark`, and `light`, cycled via the
 - **Memory Footprint:** The entire database is loaded into `sys.state` (RAM) on initialization. This is by design for synchronous read performance, but could be a bottleneck for exceptionally large notebooks (> ~10,000 blocks).
 - **Single-User Sync:** The GitHub Gist sync strategy is "first in wins" with no merge conflict UI. This is a conscious simplification for a single-user context.
 - **`&news` dropped:** The planned French public domain press feature (`&news`) was researched and prototyped, but the Gallica SRU API (BnF) does not support browser-side CORS fetch requests (returns `403`). The feature remains viable server-side or via a proxy.
+
+---
+
+## 🧪 Testing Strategy (Zero-Dependency)
+
+Because Albedo strictly avoids external dependencies and build tools, a traditional Node.js testing setup is intentionally omitted.
+
+**Recommended Approach:**
+1. **In-Browser Test Harness:** Create a separate `tests.html` file. It can fetch `albedo.html`, extract the `<script>` tag content, and evaluate the `sys` object in an isolated context.
+2. **Pure Function Unit Testing:** Native `console.assert()` can be used inside `tests.html` to validate the pure functions: `sys.parse()`, `sys.format()`, and the Boolean search logic.
+3. **Automated End-to-End:** Utilize the `user-tester` (from `AGENTS.md`) using browser-automation to systematically exercise the UI, specifically targeting edge cases in the parser, memory constraints, and asynchronous sync workflows.
+4. **Mocking:** `db` (IndexedDB layer) and `sys.api` (network layer) can be easily mocked in the test harness to simulate database corruption, network latency, or GitHub API rate limits.
