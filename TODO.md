@@ -12,7 +12,7 @@ NEEDED :
 
 [x] ONLINE/OFFLINE indicator : a simple green/red dot on the footer
 
-* Current indicators are too big, kind of ugly. Dots should be smaller. Gist indicator is ambiguous (grey but connected ?)
+* Current indicators are too big, kind of ugly. Dots should be smaller. Gist indicator is ambiguous (grey but connected ?) - let's use symbols instead.
 
 * AUTO PULL AT OPENING, AUTO PUSH AFTER X ACTION - if GIST configured AND online
 
