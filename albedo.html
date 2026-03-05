@@ -551,12 +551,19 @@
 
         /* --- INDICATORS --- */
         #gist-indicator,
-        #net-indicator {
+        #net-indicator,
+        #sync-date {
             display: inline-block;
             margin-left: 8px;
             font-size: 12px;
             vertical-align: baseline;
             font-family: var(--font-code);
+        }
+
+        #sync-date {
+            font-size: 10px;
+            color: var(--meta);
+            opacity: 0.6;
         }
 
         #gist-indicator {
@@ -726,6 +733,7 @@
                 <span class="base-name" id="base-label">PRIMARY</span>
                 <span id="gist-indicator" title="GitHub Gist Connected"></span>
                 <span id="net-indicator" class="is-online" title="Network Status"></span>
+                <span id="sync-date" title="Last Sync Date"></span>
             </div>
 
             <div class="deck-right">
@@ -1359,6 +1367,13 @@
                     document.body.classList.add('has-gist');
                 } else {
                     document.body.classList.remove('has-gist');
+                }
+                const syncInd = document.getElementById('sync-date');
+                if (syncInd && this.meta.lastGistDate) {
+                    const d = new Date(this.meta.lastGistDate);
+                    syncInd.innerText = `${d.getMonth() + 1}/${d.getDate()} ${d.getHours()}:${d.getMinutes().toString().padStart(2, '0')}`;
+                } else if (syncInd) {
+                    syncInd.innerText = '';
                 }
             },
 

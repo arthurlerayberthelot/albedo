@@ -8,7 +8,7 @@ CONTINUOUS IMPROVEMENTS :
 
 NEEDED :
 
-* "last sync" date in footer
+[x] "last sync" date in footer
 
 TO BE CONSIDERED :
 
