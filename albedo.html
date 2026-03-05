@@ -547,29 +547,40 @@
         #gist-indicator,
         #net-indicator {
             display: inline-block;
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
             margin-left: 8px;
-            vertical-align: middle;
+            font-size: 10px;
+            vertical-align: baseline;
+            font-family: var(--font-ui);
+            opacity: 0.6;
+            transition: color 0.3s, opacity 0.3s;
         }
 
         #gist-indicator {
             display: none;
-            background-color: var(--ink);
-            opacity: 0.7;
         }
 
         .has-gist #gist-indicator {
             display: inline-block;
         }
 
-        #net-indicator.is-online {
-            background-color: var(--c-green-ink);
+        #gist-indicator::after {
+            content: '◆';
+            color: var(--ink);
         }
 
-        #net-indicator.is-offline {
-            background-color: var(--danger);
+        #net-indicator.is-online::after {
+            content: '•';
+            color: var(--c-green-ink);
+            font-size: 16px;
+            line-height: 0;
+            vertical-align: -2px;
+        }
+
+        #net-indicator.is-offline::after {
+            content: '×';
+            color: var(--danger);
+            font-size: 14px;
+            font-weight: bold;
         }
 
         /* ========================================================================== */
