@@ -14,7 +14,7 @@ NEEDED :
 
 [x] Current indicators are too big, kind of ugly. Dots should be smaller. Gist indicator is ambiguous (grey but connected ?) - let's use discreet symbols instead.
 
-* Current gist indicator is ugly. Just use "o" or "x". Current online indicator is too big. Just use a simple dot.
+[x] Current gist indicator is ugly. Just use "o" or "x". Current online indicator is too big. Just use a simple dot.
 
 * AUTO PULL AT OPENING, AUTO PUSH AFTER X ACTION - if GIST configured AND online
 

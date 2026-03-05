@@ -548,39 +548,37 @@
         #net-indicator {
             display: inline-block;
             margin-left: 8px;
-            font-size: 10px;
+            font-size: 12px;
             vertical-align: baseline;
-            font-family: var(--font-ui);
-            opacity: 0.6;
-            transition: color 0.3s, opacity 0.3s;
+            font-family: var(--font-code);
         }
 
         #gist-indicator {
-            display: none;
-        }
-
-        .has-gist #gist-indicator {
-            display: inline-block;
+            color: var(--meta);
+            opacity: 0.5;
         }
 
         #gist-indicator::after {
-            content: '◆';
+            content: 'x';
+        }
+
+        .has-gist #gist-indicator {
             color: var(--ink);
+            opacity: 1;
+        }
+
+        .has-gist #gist-indicator::after {
+            content: 'o';
         }
 
         #net-indicator.is-online::after {
             content: '•';
             color: var(--c-green-ink);
-            font-size: 16px;
-            line-height: 0;
-            vertical-align: -2px;
         }
 
         #net-indicator.is-offline::after {
-            content: '×';
+            content: '•';
             color: var(--danger);
-            font-size: 14px;
-            font-weight: bold;
         }
 
         /* ========================================================================== */
