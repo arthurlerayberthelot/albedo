@@ -1023,6 +1023,9 @@
                             else shouldPull = false;
                         }
                         if (!shouldPull && !isLocalDirty && this.parent.meta.lastGistDate) {
+                            this.parent.meta.lastSync = Date.now();
+                            this.parent.saveMeta();
+                            this.parent.updateGistStatus();
                             this.parent.notify("Up to date");
                             return;
                         }
@@ -1038,9 +1041,11 @@
                                 }
                                 this.parent.meta.lastGistDate = gist.updated_at;
                                 this.parent.meta.isDirty = false;
+                                this.parent.meta.lastSync = Date.now();
                                 this.parent.saveMeta();
                                 this.parent.updateTagsIndex();
                                 this.parent.render();
+                                this.parent.updateGistStatus();
                                 this.parent.notify("Pulled from Gist");
                             } catch (e) { throw new Error("Parse error"); }
                         } else {
@@ -1064,7 +1069,9 @@
                             const updatedGist = await patchRes.json();
                             this.parent.meta.lastGistDate = updatedGist.updated_at;
                             this.parent.meta.isDirty = false;
+                            this.parent.meta.lastSync = Date.now();
                             this.parent.saveMeta();
+                            this.parent.updateGistStatus();
                             this.parent.notify("Pushed to Gist");
                         }
                     } catch (err) {
@@ -1369,9 +1376,14 @@
                     document.body.classList.remove('has-gist');
                 }
                 const syncInd = document.getElementById('sync-date');
-                if (syncInd && this.meta.lastGistDate) {
-                    const d = new Date(this.meta.lastGistDate);
-                    syncInd.innerText = `${d.getMonth() + 1}/${d.getDate()} ${d.getHours()}:${d.getMinutes().toString().padStart(2, '0')}`;
+                const dateVal = this.meta.lastSync || this.meta.lastGistDate;
+                if (syncInd && dateVal) {
+                    const d = new Date(dateVal);
+                    const da = d.getDate().toString().padStart(2, '0');
+                    const mo = (d.getMonth() + 1).toString().padStart(2, '0');
+                    const ho = d.getHours().toString().padStart(2, '0');
+                    const mi = d.getMinutes().toString().padStart(2, '0');
+                    syncInd.innerText = `${da}/${mo} ${ho}:${mi}`;
                 } else if (syncInd) {
                     syncInd.innerText = '';
                 }
