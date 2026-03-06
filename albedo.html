@@ -748,7 +748,9 @@
 
     <header id="header">
         <div class="container container-header">
-            <span id="folder-label" title="Current Folder">/</span>
+            <span id="folder-label" title="Current Folder"
+                style="cursor: pointer; padding: 2px 6px; border-radius: 4px; background: color-mix(in srgb, var(--ink) 5%, transparent);"
+                onclick="sys.showTree()">/</span>
             <textarea id="commander" placeholder="Write or type '?' to search..." autocomplete="off"
                 rows="1"></textarea>
             <div id="suggestion"></div>
@@ -840,6 +842,7 @@
             currentFolder: '/',
             tagsIndex: new Set(),
             patternsIndex: new Set(),
+            foldersIndex: new Set(['/']),
             currentRenderOptions: {},
             viewLimit: 50,
             renderedCount: 0,
@@ -1190,6 +1193,17 @@
                                 this.parent.ui.suggestion.classList.remove('active');
                             }
                         }
+                        else if (lastWord.startsWith('/') && lastWord.length > 0) {
+                            const match = Array.from(this.parent.foldersIndex).sort()
+                                .find(f => f.toLowerCase().startsWith(lastWord.toLowerCase()) && f !== lastWord.toLowerCase());
+                            if (match) {
+                                this.parent.activeSuggestion = match;
+                                this.parent.ui.suggestion.innerHTML = `<kbd>TAB</kbd> <b>${match}</b>`;
+                                this.parent.ui.suggestion.classList.add('active');
+                            } else {
+                                this.parent.ui.suggestion.classList.remove('active');
+                            }
+                        }
                         else if ((lastWord.startsWith('~') || val.startsWith('?~')) && lastWord.length > 0) {
                             let searchPrefix = '';
                             if (lastWord.startsWith('?~')) searchPrefix = '~' + lastWord.substring(2);
@@ -1321,6 +1335,7 @@
                                 const newFolder = val.trim();
                                 if (newFolder.length > 0) {
                                     this.parent.currentFolder = newFolder;
+                                    this.parent.foldersIndex.add(newFolder);
                                     this.parent.ui.folderLabel.innerText = newFolder;
                                     this.parent.ui.folderLabel.title = `Current Folder: ${newFolder}`;
                                     this.parent.requestRender({}); // Re-render feed for new folder
@@ -1459,6 +1474,13 @@
             updateTagsIndex() {
                 this.tagsIndex.clear();
                 this.patternsIndex.clear();
+                this.foldersIndex.clear();
+                this.foldersIndex.add('/');
+
+                if (this.currentFolder && this.currentFolder !== '/') {
+                    this.foldersIndex.add(this.currentFolder);
+                }
+
                 this.state.forEach(block => {
                     (block.tags || []).forEach(t => this.tagsIndex.add(t));
                     // Index pattern keys (e.g. '~date' from '~date:2026') for autocomplete
@@ -1466,6 +1488,9 @@
                         const key = p.split(':')[0];
                         this.patternsIndex.add(key);
                     });
+                    if (block.folder && block.folder !== '/') {
+                        this.foldersIndex.add(block.folder);
+                    }
                 });
             },
 
@@ -2102,6 +2127,54 @@
                 t.innerText = msg;
                 t.classList.add('active');
                 this.toastTid = setTimeout(() => t.classList.remove('active'), 2500);
+            },
+
+            showTree() {
+                const overlay = document.createElement('div');
+                overlay.style.cssText = "position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: color-mix(in srgb, var(--ink) 20%, transparent); backdrop-filter: blur(2px); display: flex; align-items: center; justify-content: center; z-index: 1000; animation: manifest 0.2s ease-out;";
+
+                const box = document.createElement('div');
+                box.style.cssText = "background: var(--surface); padding: 24px; border-radius: 8px; border: 1px solid var(--border); max-width: 400px; width: 90%; font-family: var(--font-ui); color: var(--ink); box-shadow: 0 10px 25px rgba(0,0,0,0.1); max-height: 80vh; overflow-y: auto; display: flex; flex-direction: column; gap: 12px;";
+
+                const title = document.createElement('div');
+                title.innerText = "ARBORESCENCE";
+                title.style.cssText = "font-weight: 600; font-family: var(--font-code); font-size: 14px; text-transform: uppercase; color: var(--meta); letter-spacing: 1px; margin-bottom: 8px; text-align: center;";
+                box.appendChild(title);
+
+                const sortedFolders = Array.from(this.foldersIndex).sort();
+
+                sortedFolders.forEach(folder => {
+                    const btn = document.createElement('button');
+                    btn.innerText = folder;
+                    const isCurrent = folder === this.currentFolder;
+                    btn.style.cssText = `text-align: left; padding: 10px 12px; border: 1px solid ${isCurrent ? 'var(--accent)' : 'var(--border)'}; border-radius: 4px; cursor: pointer; background: ${isCurrent ? 'color-mix(in srgb, var(--accent) 10%, transparent)' : 'transparent'}; color: ${isCurrent ? 'var(--accent)' : 'var(--ink)'}; font-family: var(--font-code); font-size: 14px; transition: background 0.2s;`;
+
+                    btn.onmouseover = () => { if (!isCurrent) btn.style.background = 'color-mix(in srgb, var(--ink) 5%, transparent)'; };
+                    btn.onmouseout = () => { if (!isCurrent) btn.style.background = 'transparent'; };
+
+                    btn.onclick = () => {
+                        overlay.remove();
+                        if (!isCurrent) {
+                            this.currentFolder = folder;
+                            this.ui.folderLabel.innerText = folder;
+                            this.ui.folderLabel.title = `Current Folder: ${folder}`;
+                            this.requestRender({});
+                            this.notify(`Directory: ${folder}`);
+                        }
+                    };
+                    box.appendChild(btn);
+                });
+
+                const closeBtn = document.createElement('button');
+                closeBtn.innerText = "Close";
+                closeBtn.style.cssText = "margin-top: 12px; padding: 10px; border: none; border-radius: 4px; cursor: pointer; background: var(--ink); color: var(--bg); font-weight: 600; font-family: var(--font-ui); font-size: 13px;";
+                closeBtn.onclick = () => overlay.remove();
+                box.appendChild(closeBtn);
+
+                overlay.onclick = (e) => { if (e.target === overlay) overlay.remove(); };
+
+                overlay.appendChild(box);
+                document.body.appendChild(overlay);
             }
         };
 
