@@ -8,8 +8,6 @@ CONTINUOUS IMPROVEMENTS :
 
 NEEDED :
 
-* Redesign of footer for a cleaner, more minimalistic, focused and homogeneous look.
-
 TO BE CONSIDERED :
 
 * Mobile integration : how ? PWA (with free github page) ?
