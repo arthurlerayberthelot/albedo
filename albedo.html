@@ -468,6 +468,39 @@
         /* ========================================================================== */
         /* --- FOOTER & CONTROLS ---                                                  */
         /* ========================================================================== */
+        header {
+            flex-shrink: 0;
+            background: var(--glass);
+            border-bottom: 1px solid var(--border);
+            padding: 24px 0;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+        }
+
+        .container-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        #folder-label {
+            font-family: var(--font-code);
+            font-size: 14px;
+            color: var(--meta);
+            font-weight: 500;
+            flex-shrink: 0;
+            user-select: none;
+        }
+
+        #commander {
+            flex-grow: 1;
+            width: 100%;
+            background: none;
+        }
+
         footer {
             flex-shrink: 0;
             background: var(--glass);
@@ -714,7 +747,8 @@
     <div id="toast">Ready</div>
 
     <header id="header">
-        <div class="container">
+        <div class="container container-header">
+            <span id="folder-label" title="Current Folder">/</span>
             <textarea id="commander" placeholder="Write or type '?' to search..." autocomplete="off"
                 rows="1"></textarea>
             <div id="suggestion"></div>
@@ -803,6 +837,7 @@
         const sys = {
             state: [],
             meta: { id: 'primary', name: 'PRIMARY', theme: 'auto' },
+            currentFolder: '/',
             tagsIndex: new Set(),
             patternsIndex: new Set(),
             currentRenderOptions: {},
@@ -1017,9 +1052,9 @@
                         if (!this.parent.meta.lastGistDate) {
                             if (!isGistEmpty && isLocalEmpty) shouldPull = true;
                             else if (isGistEmpty && !isLocalEmpty) shouldPull = false;
-                            else if (!isGistEmpty && !isLocalEmpty) shouldPull = true;
+                            else if (!isGistEmpty && !isLocalEmpty) shouldPull = isLocalDirty ? false : true;
                         } else {
-                            if (hasRemoteChanges) shouldPull = true;
+                            if (hasRemoteChanges && !isLocalDirty) shouldPull = true;
                             else shouldPull = false;
                         }
                         if (!shouldPull && !isLocalDirty && this.parent.meta.lastGistDate) {
@@ -1282,6 +1317,17 @@
                                 resetCommander();
                                 return;
                             }
+                            else if (val.startsWith('/')) {
+                                const newFolder = val.trim();
+                                if (newFolder.length > 0) {
+                                    this.parent.currentFolder = newFolder;
+                                    this.parent.ui.folderLabel.innerText = newFolder;
+                                    this.parent.ui.folderLabel.title = `Current Folder: ${newFolder}`;
+                                    this.parent.requestRender({}); // Re-render feed for new folder
+                                }
+                                resetCommander();
+                                return;
+                            }
                             if (val && !val.startsWith('?')) {
                                 this.parent.add(val);
                                 resetCommander();
@@ -1314,6 +1360,7 @@
                 feed: document.getElementById('feed'),
                 stats: document.getElementById('stats'),
                 baseLabel: document.getElementById('base-label'),
+                folderLabel: document.getElementById('folder-label'),
                 toast: document.getElementById('toast'),
                 suggestion: document.getElementById('suggestion')
             },
@@ -1543,7 +1590,8 @@
                     color: data.color,
                     tags: data.tags,
                     patterns: data.patterns,
-                    body: data.text
+                    body: data.text,
+                    folder: this.currentFolder
                 };
 
                 this.state.unshift(block);
@@ -1566,6 +1614,7 @@
                     this.state[idx].patterns = data.patterns;
                     this.state[idx].color = data.color;
                     this.state[idx].body = data.text;
+                    this.state[idx].folder = this.currentFolder;
 
                     this.updateTagsIndex();
                     this.render();
@@ -1594,12 +1643,6 @@
             markDirty() {
                 this.meta.isDirty = true;
                 this.saveMeta();
-
-                this.actionCount = (this.actionCount || 0) + 1;
-                if (this.actionCount >= 5 && navigator.onLine && this.meta.gistToken && this.meta.gistId) {
-                    this.api.sync();
-                    this.actionCount = 0;
-                }
             },
 
             saveMeta() { db.put('meta', this.meta); },
@@ -1836,6 +1879,15 @@
                         (item.patterns || []).some(p => p.startsWith(pattern + ':') || p === pattern)
                     );
                 }
+
+                // Filtrer par dossier courant (currentFolder) AVANT le tri, pour toutes les vues
+                // Si on est à la racine ('/'), on affiche toutes les notes (y compris sous-dossiers).
+                // Les anciens blocs sans '.folder' sont considérés comme étant dans '/'
+                viewData = viewData.filter(item => {
+                    if (this.currentFolder === '/') return true;
+                    const itemFolder = item.folder || '/';
+                    return itemFolder === this.currentFolder;
+                });
 
                 // 2. ÉTAPE DE TRI
                 viewData.sort((a, b) => {
