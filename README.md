@@ -23,7 +23,6 @@ Open `albedo.html` in your browser and start typing.
 - `&wiki: subject` — Wikipedia summary
 - `&source: topic` — academic papers (Crossref)
 - `&meteo: Paris 2024-07-14` — historical weather
-- `&help` — show all commands
 
 **Folders** — type `/projects` to switch folders, click the `/` label to browse.
 
