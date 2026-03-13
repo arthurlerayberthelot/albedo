@@ -12,6 +12,8 @@ Open `albedo.html` in your browser and start typing.
 
 **Search** — start with `?` to filter. Boolean operators work: `?cats AND dogs NOT fish`
 
+**Sort** — type `?~pattern` to filter `pattern` then sort alphanumerically. Ascending by default, type `?~d pattern` for descending.
+
 **Tag & color** — put tokens at the start of your note:
 ```
 #journal !blue My thoughts today...
