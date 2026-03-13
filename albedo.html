@@ -914,7 +914,7 @@
             /** Allowed block colors — validated during parse(). */
             validColors: ['red', 'blue', 'green', 'yellow', 'purple', 'gray'],
             /** Recognized command prefixes for autocomplete in the Commander. */
-            validExternals: ['&dic:', '&wiki:', '&source:', '&github:', '&sync:', '&meteo:', '&help'],
+            validExternals: ['&dic:', '&wiki:', '&source:', '&github:', '&sync:', '&meteo:'],
 
             api: {
                 parent: null,
@@ -939,39 +939,6 @@
                     return fetch(url, { ...options, signal: controller.signal })
                         .finally(() => clearTimeout(timeoutId));
                 },
-
-                generateHelp() {
-                    const blockText = [
-                        '#help !gray',
-                        '',
-                        '**ALBEDO — Aide-mémoire**',
-                        '',
-                        '**Écriture**',
-                        '`#tag` — attribuer un tag  |  `!couleur` — colorier (red, blue, green, yellow, purple, gray)',
-                        '`~clé:valeur` — ajouter un pattern  |  `**gras**`  `*italique*`  `[lien](url)`',
-                        '',
-                        '**Recherche & Tri**',
-                        '`?mot` — recherche textuelle  |  `?#tag` — filtrer par tag  |  `?!couleur` — filtrer par couleur',
-                        '`?~clé:valeur` — filtrer par pattern  |  `AND` `OR` `NOT` — opérateurs booléens',
-                        '`?~ clé` — tri chronologique  |  `?~ d clé` — tri décroissant',
-                        '',
-                        '**Commandes externes**',
-                        '`&dic: mot` — définition Wiktionnaire',
-                        '`&wiki: sujet` — résumé Wikipédia',
-                        '`&source: sujet` — littérature académique (Crossref)',
-                        '`&meteo: Lieu YYYY-MM-DD` — archive météo historique',
-                        '`&github: TOKEN ID` — configurer la sync Gist',
-                        '`&sync:` — synchroniser avec GitHub Gist',
-                        '',
-                        '**Interface**',
-                        '`TAB` — autocomplétion  |  `Entrée` — valider  |  `Échap` — annuler',
-                        'Bouton **Theme** — basculer Auto / Dark / Light',
-                        'Bouton **Load** — importer une cartouche JSON  |  **↓JSON** — exporter la vue courante',
-                    ].join('\n');
-                    this.parent.add(blockText);
-                    this.parent.notify('Aide générée');
-                },
-
 
                 /** Resolves a place name to geographic coordinates via Open-Meteo. */
                 async fetchCoordinates(locationName) {
@@ -1448,11 +1415,6 @@
                             else if (val.startsWith('&meteo:')) {
                                 const query = val.replace('&meteo:', '').trim();
                                 if (query) this.parent.api.fetchMeteo(query);
-                                resetCommander();
-                                return;
-                            }
-                            else if (val === '&help') {
-                                this.parent.api.generateHelp();
                                 resetCommander();
                                 return;
                             }
