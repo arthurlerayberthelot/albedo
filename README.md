@@ -12,7 +12,7 @@ Open `albedo.html` in your browser and start typing.
 
 **Search** — start with `?` to filter. Boolean operators work: `?cats AND dogs NOT fish`
 
-**Sort** — type `?~key` to filter `key` then sort values alphanumerically. Ascending by default, type `?~d pattern` for descending.
+**Sort** — type `?~<key>` to filter `key` then sort values alphanumerically. Ascending by default, type `?~d <key>` for descending.
 
 **Tag & color** — put tokens at the start of your note:
 ```
