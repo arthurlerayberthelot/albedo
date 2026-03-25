@@ -1128,7 +1128,8 @@
                     try {
                         const headers = {
                             'Authorization': `token ${this.parent.meta.gistToken}`,
-                            'Accept': 'application/vnd.github.v3+json'
+                            'Accept': 'application/vnd.github.v3+json',
+                            'Content-Type': 'application/json'
                         };
 
                         // ── 1. Fetch Gist metadata + inline file contents ──
@@ -1136,7 +1137,7 @@
                             `https://api.github.com/gists/${this.parent.meta.gistId}`,
                             { headers }
                         );
-                        if (!res.ok) throw new Error("Gist fetch failed");
+                        if (!res.ok) throw new Error(`Gist fetch failed (${res.status})`);
                         const gist = await res.json();
                         const fileNames = Object.keys(gist.files);
                         if (fileNames.length === 0) throw new Error("Gist is empty");
@@ -1280,8 +1281,8 @@
                             const blocks = localChunks[chunkKey] || [];
                             const fileName = chunkKey + '.json';
                             if (blocks.length === 0) {
-                                // Chunk is now empty — delete the file from Gist
-                                files[fileName] = null;
+                                // Chunk is now empty — overwrite with empty array
+                                files[fileName] = { content: '[]' };
                             } else {
                                 files[fileName] = { content: JSON.stringify(blocks) };
                             }
@@ -1299,7 +1300,7 @@
                         const remoteChunkKeys = Object.keys(remoteManifest.chunks || {});
                         for (const key of remoteChunkKeys) {
                             if (!localChunks[key] || localChunks[key].length === 0) {
-                                files[key + '.json'] = null;
+                                files[key + '.json'] = { content: '[]' };
                                 delete newHashes[key];
                             }
                         }
@@ -1317,7 +1318,7 @@
                             `https://api.github.com/gists/${this.parent.meta.gistId}`,
                             { method: 'PATCH', headers, body: JSON.stringify({ files }) }
                         );
-                        if (!patchRes.ok) throw new Error("Gist push failed");
+                        if (!patchRes.ok) throw new Error(`Push failed (${patchRes.status})`);
                         const updatedGist = await patchRes.json();
 
                         sys.meta.chunkHashes = newHashes;
@@ -1395,14 +1396,14 @@
                         })
                     };
 
-                    // Delete the legacy single file
-                    files[primaryFileName] = null;
+                    // Overwrite the legacy file with a small marker (safer than null-deletion)
+                    files[primaryFileName] = { content: '{"migrated_to_v2": true}' };
 
                     const patchRes = await this.fetchWithTimeout(
                         `https://api.github.com/gists/${sys.meta.gistId}`,
                         { method: 'PATCH', headers, body: JSON.stringify({ files }) }
                     );
-                    if (!patchRes.ok) throw new Error("Migration push failed");
+                    if (!patchRes.ok) throw new Error(`Migration failed (${patchRes.status})`);
                     const updatedGist = await patchRes.json();
 
                     sys.meta.chunkHashes = newHashes;
