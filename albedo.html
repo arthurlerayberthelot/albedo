@@ -1087,12 +1087,20 @@
                 },
 
                 /**
-                 * GitHub Gist Synchronisation — "First In Wins" Strategy
+                 * GitHub Gist Synchronisation — Chunked Delta Sync (v2)
                  *
-                 * ALGORITHM OVERVIEW:
-                 * 1. Fetch the remote Gist to check its `updated_at` timestamp.
-                 * 2. Decide whether to PULL (overwrite local with remote) or
-                 *    PUSH (overwrite remote with local), using this decision matrix:
+                 * Instead of pushing/pulling the entire block array as one file,
+                 * blocks are split into 16 chunk files bucketed by the first hex
+                 * character of each block's UUID:
+                 *
+                 *   albedo_0.json … albedo_f.json   (block data)
+                 *   _albedo_manifest.json            (per-chunk content hashes)
+                 *
+                 * PUSH: only uploads chunks listed in meta.dirtyChunks.
+                 * PULL: compares manifest hashes with local hashes, only processes
+                 *       chunks whose hash differs → targeted IDB puts/deletes.
+                 *
+                 * DECISION MATRIX (unchanged from v1):
                  *
                  *    ┌─────────────────────────┬───────────────┬────────────────┐
                  *    │ Condition               │ Local Dirty?  │ Action         │
@@ -1108,10 +1116,8 @@
                  *    │ Both unchanged          │ No            │ NO-OP          │
                  *    └─────────────────────────┴───────────────┴────────────────┘
                  *
-                 * LIMITATION: This is single-user, single-device. There is no
-                 * block-level merge — a PULL replaces the entire local state.
-                 * For multi-device users, the recommendation is: sync before
-                 * editing and sync after editing, on each device.
+                 * BACKWARD COMPAT: If the Gist contains a single legacy file
+                 * (v1 format), it is auto-migrated to chunked format.
                  */
                 async sync() {
                     if (!this.parent.meta.gistToken || !this.parent.meta.gistId) {
@@ -1124,75 +1130,24 @@
                             'Authorization': `token ${this.parent.meta.gistToken}`,
                             'Accept': 'application/vnd.github.v3+json'
                         };
-                        const res = await this.fetchWithTimeout(`https://api.github.com/gists/${this.parent.meta.gistId}`, {
-                            headers
-                        });
+
+                        // ── 1. Fetch Gist metadata + inline file contents ──
+                        const res = await this.fetchWithTimeout(
+                            `https://api.github.com/gists/${this.parent.meta.gistId}`,
+                            { headers }
+                        );
                         if (!res.ok) throw new Error("Gist fetch failed");
                         const gist = await res.json();
                         const fileNames = Object.keys(gist.files);
                         if (fileNames.length === 0) throw new Error("Gist is empty");
-                        const primaryFileName = fileNames[0];
-                        const gistFile = gist.files[primaryFileName];
-                        const hasRemoteChanges = this.parent.meta.lastGistDate !== gist.updated_at;
-                        const isLocalDirty = this.parent.meta.isDirty;
-                        const isGistEmpty = gistFile.content.trim() === '[]' || gistFile.content.trim() === '';
-                        const isLocalEmpty = this.parent.state.length === 0;
-                        let shouldPull = false;
-                        if (!this.parent.meta.lastGistDate) {
-                            if (!isGistEmpty && isLocalEmpty) shouldPull = true;
-                            else if (isGistEmpty && !isLocalEmpty) shouldPull = false;
-                            else if (!isGistEmpty && !isLocalEmpty) shouldPull = isLocalDirty ? false : true;
+
+                        // ── 2. Detect format ──
+                        const isV2 = '_albedo_manifest.json' in gist.files;
+
+                        if (isV2) {
+                            await this._syncV2(gist, headers);
                         } else {
-                            if (hasRemoteChanges && !isLocalDirty) shouldPull = true;
-                            else shouldPull = false;
-                        }
-                        if (!shouldPull && !isLocalDirty && this.parent.meta.lastGistDate) {
-                            this.parent.meta.lastSync = Date.now();
-                            this.parent.saveMeta();
-                            this.parent.updateGistStatus();
-                            this.parent.notify("Up to date");
-                            return;
-                        }
-                        if (shouldPull) {
-                            try {
-                                const gistData = JSON.parse(gistFile.content);
-                                if (!Array.isArray(gistData)) throw new Error("Invalid format");
-                                this.parent.state = [];
-                                await db.clear('blocks');
-                                this.parent.state = gistData;
-                                for (const block of this.parent.state) {
-                                    await db.put('blocks', block);
-                                }
-                                this.parent.meta.lastGistDate = gist.updated_at;
-                                this.parent.meta.isDirty = false;
-                                this.parent.meta.lastSync = Date.now();
-                                this.parent.saveMeta();
-                                this.parent.updateTagsIndex();
-                                this.parent.render();
-                                this.parent.updateGistStatus();
-                                this.parent.notify("Pulled from Gist");
-                            } catch (e) { throw new Error("Parse error"); }
-                        } else {
-                            const payload = {
-                                files: {
-                                    [primaryFileName]: {
-                                        content: JSON.stringify(this.parent.state, null, 2)
-                                    }
-                                }
-                            };
-                            const patchRes = await this.fetchWithTimeout(`https://api.github.com/gists/${this.parent.meta.gistId}`, {
-                                method: 'PATCH',
-                                headers,
-                                body: JSON.stringify(payload)
-                            });
-                            if (!patchRes.ok) throw new Error("Gist push failed");
-                            const updatedGist = await patchRes.json();
-                            this.parent.meta.lastGistDate = updatedGist.updated_at;
-                            this.parent.meta.isDirty = false;
-                            this.parent.meta.lastSync = Date.now();
-                            this.parent.saveMeta();
-                            this.parent.updateGistStatus();
-                            this.parent.notify("Pushed to Gist");
+                            await this._migrateV1(gist, headers);
                         }
                     } catch (err) {
                         console.error("ALBEDO Sync Error:", err);
@@ -1202,6 +1157,264 @@
                             this.parent.notify("Sync Error: " + err.message);
                         }
                     }
+                },
+
+                /**
+                 * V2 chunked delta sync — the main sync path after migration.
+                 */
+                async _syncV2(gist, headers) {
+                    const sys = this.parent;
+                    const manifest = JSON.parse(gist.files['_albedo_manifest.json'].content);
+                    const hasRemoteChanges = sys.meta.lastGistDate !== gist.updated_at;
+                    const dirtyChunks = Array.isArray(sys.meta.dirtyChunks) ? sys.meta.dirtyChunks : [];
+                    const isLocalDirty = dirtyChunks.length > 0;
+                    const localHashes = sys.meta.chunkHashes || {};
+
+                    // Count remote blocks from manifest
+                    const remoteBlockCount = manifest.blockCount || 0;
+                    const isLocalEmpty = sys.state.length === 0;
+                    const isRemoteEmpty = remoteBlockCount === 0;
+
+                    // ── Decision logic (same matrix as v1) ──
+                    let shouldPull = false;
+                    if (!sys.meta.lastGistDate) {
+                        if (!isRemoteEmpty && isLocalEmpty) shouldPull = true;
+                        else if (isRemoteEmpty && !isLocalEmpty) shouldPull = false;
+                        else if (!isRemoteEmpty && !isLocalEmpty) shouldPull = !isLocalDirty;
+                    } else {
+                        if (hasRemoteChanges && !isLocalDirty) shouldPull = true;
+                        else shouldPull = false;
+                    }
+
+                    // ── NO-OP ──
+                    if (!shouldPull && !isLocalDirty && sys.meta.lastGistDate) {
+                        sys.meta.lastSync = Date.now();
+                        sys.saveMeta();
+                        sys.updateGistStatus();
+                        sys.notify("Up to date");
+                        return;
+                    }
+
+                    if (shouldPull) {
+                        // ── DELTA PULL ──
+                        const remoteHashes = manifest.chunks || {};
+                        const changedChunkKeys = [];
+                        const removedChunkKeys = [];
+
+                        // Find chunks that changed or are new
+                        for (const [key, hash] of Object.entries(remoteHashes)) {
+                            if (localHashes[key] !== hash) changedChunkKeys.push(key);
+                        }
+                        // Find chunks that were removed remotely
+                        for (const key of Object.keys(localHashes)) {
+                            if (!(key in remoteHashes)) removedChunkKeys.push(key);
+                        }
+
+                        if (changedChunkKeys.length === 0 && removedChunkKeys.length === 0) {
+                            sys.meta.lastGistDate = gist.updated_at;
+                            sys.meta.lastSync = Date.now();
+                            sys.saveMeta();
+                            sys.updateGistStatus();
+                            sys.notify("Up to date");
+                            return;
+                        }
+
+                        // Build a Set of block IDs in changed/removed chunks for fast lookup
+                        const affectedChunks = new Set([...changedChunkKeys, ...removedChunkKeys]);
+                        // Remove old blocks belonging to affected chunks
+                        const survivingBlocks = [];
+                        for (const block of sys.state) {
+                            if (affectedChunks.has(sys.getChunkKey(block.id))) {
+                                await db.delete('blocks', block.id);
+                            } else {
+                                survivingBlocks.push(block);
+                            }
+                        }
+
+                        // Parse and insert blocks from changed chunks
+                        const newBlocks = [];
+                        for (const key of changedChunkKeys) {
+                            const fileName = key + '.json';
+                            const file = gist.files[fileName];
+                            if (!file) continue;
+                            // Handle truncated files (>1MB) — fetch raw content
+                            let content = file.content;
+                            if (file.truncated && file.raw_url) {
+                                const rawRes = await this.fetchWithTimeout(file.raw_url, { headers });
+                                if (!rawRes.ok) throw new Error(`Failed to fetch ${fileName}`);
+                                content = await rawRes.text();
+                            }
+                            const chunkBlocks = JSON.parse(content);
+                            for (const block of chunkBlocks) {
+                                await db.put('blocks', block);
+                                newBlocks.push(block);
+                            }
+                        }
+
+                        sys.state = [...survivingBlocks, ...newBlocks].sort((a, b) => b.ts - a.ts);
+                        sys.meta.chunkHashes = { ...remoteHashes };
+                        sys.meta.lastGistDate = gist.updated_at;
+                        sys.meta.isDirty = false;
+                        sys.meta.dirtyChunks = [];
+                        sys.meta.lastSync = Date.now();
+                        sys.saveMeta();
+                        sys.updateTagsIndex();
+                        sys.render();
+                        sys.updateGistStatus();
+                        const total = changedChunkKeys.length + removedChunkKeys.length;
+                        sys.notify(`Pulled ${total}/${Object.keys(remoteHashes).length} chunks`);
+                    } else {
+                        // ── DELTA PUSH — only dirty chunks ──
+                        const localChunks = sys.groupByChunk(sys.state);
+                        const newHashes = {};
+                        const files = {};
+
+                        // Compute hashes for ALL local chunks (need full picture for manifest)
+                        for (const [key, blocks] of Object.entries(localChunks)) {
+                            const content = JSON.stringify(blocks);
+                            newHashes[key] = sys.fastHash(content);
+                        }
+
+                        // Only include dirty chunks in the PATCH payload
+                        for (const chunkKey of dirtyChunks) {
+                            const blocks = localChunks[chunkKey] || [];
+                            const fileName = chunkKey + '.json';
+                            if (blocks.length === 0) {
+                                // Chunk is now empty — delete the file from Gist
+                                files[fileName] = null;
+                            } else {
+                                files[fileName] = { content: JSON.stringify(blocks) };
+                            }
+                        }
+
+                        // Remove hashes for empty chunks
+                        for (const key of dirtyChunks) {
+                            if (!localChunks[key] || localChunks[key].length === 0) {
+                                delete newHashes[key];
+                            }
+                        }
+
+                        // Also clean up remote chunk files that no longer have local blocks
+                        const remoteManifest = JSON.parse(gist.files['_albedo_manifest.json'].content);
+                        const remoteChunkKeys = Object.keys(remoteManifest.chunks || {});
+                        for (const key of remoteChunkKeys) {
+                            if (!localChunks[key] || localChunks[key].length === 0) {
+                                files[key + '.json'] = null;
+                                delete newHashes[key];
+                            }
+                        }
+
+                        // Update manifest
+                        files['_albedo_manifest.json'] = {
+                            content: JSON.stringify({
+                                version: 2,
+                                blockCount: sys.state.length,
+                                chunks: newHashes
+                            })
+                        };
+
+                        const patchRes = await this.fetchWithTimeout(
+                            `https://api.github.com/gists/${this.parent.meta.gistId}`,
+                            { method: 'PATCH', headers, body: JSON.stringify({ files }) }
+                        );
+                        if (!patchRes.ok) throw new Error("Gist push failed");
+                        const updatedGist = await patchRes.json();
+
+                        sys.meta.chunkHashes = newHashes;
+                        sys.meta.lastGistDate = updatedGist.updated_at;
+                        sys.meta.isDirty = false;
+                        sys.meta.dirtyChunks = [];
+                        sys.meta.lastSync = Date.now();
+                        sys.saveMeta();
+                        sys.updateGistStatus();
+                        sys.notify(`Pushed ${dirtyChunks.length} chunk${dirtyChunks.length > 1 ? 's' : ''}`);
+                    }
+                },
+
+                /**
+                 * Migrates a v1 single-file Gist to v2 chunked format.
+                 * Applies the same pull/push decision, then writes back as chunks.
+                 */
+                async _migrateV1(gist, headers) {
+                    const sys = this.parent;
+                    const fileNames = Object.keys(gist.files);
+                    const primaryFileName = fileNames[0];
+                    const gistFile = gist.files[primaryFileName];
+                    const hasRemoteChanges = sys.meta.lastGistDate !== gist.updated_at;
+                    const dirtyChunks = Array.isArray(sys.meta.dirtyChunks) ? sys.meta.dirtyChunks : [];
+                    const isLocalDirty = dirtyChunks.length > 0 || sys.meta.isDirty;
+                    const isGistEmpty = gistFile.content.trim() === '[]' || gistFile.content.trim() === '';
+                    const isLocalEmpty = sys.state.length === 0;
+
+                    // ── Decision logic (v1 matrix) ──
+                    let shouldPull = false;
+                    if (!sys.meta.lastGistDate) {
+                        if (!isGistEmpty && isLocalEmpty) shouldPull = true;
+                        else if (isGistEmpty && !isLocalEmpty) shouldPull = false;
+                        else if (!isGistEmpty && !isLocalEmpty) shouldPull = !isLocalDirty;
+                    } else {
+                        if (hasRemoteChanges && !isLocalDirty) shouldPull = true;
+                        else shouldPull = false;
+                    }
+
+                    // Pull remote data if needed
+                    if (shouldPull && !isGistEmpty) {
+                        // Handle truncated files
+                        let content = gistFile.content;
+                        if (gistFile.truncated && gistFile.raw_url) {
+                            const rawRes = await this.fetchWithTimeout(gistFile.raw_url, { headers });
+                            if (!rawRes.ok) throw new Error("Failed to fetch legacy file");
+                            content = await rawRes.text();
+                        }
+                        const gistData = JSON.parse(content);
+                        if (!Array.isArray(gistData)) throw new Error("Invalid format");
+                        sys.state = [];
+                        await db.clear('blocks');
+                        sys.state = gistData;
+                        for (const block of sys.state) {
+                            await db.put('blocks', block);
+                        }
+                    }
+
+                    // ── Convert to v2: push all chunks + manifest, delete old file ──
+                    const localChunks = sys.groupByChunk(sys.state);
+                    const newHashes = {};
+                    const files = {};
+
+                    for (const [key, blocks] of Object.entries(localChunks)) {
+                        const content = JSON.stringify(blocks);
+                        newHashes[key] = sys.fastHash(content);
+                        files[key + '.json'] = { content };
+                    }
+
+                    files['_albedo_manifest.json'] = {
+                        content: JSON.stringify({
+                            version: 2,
+                            blockCount: sys.state.length,
+                            chunks: newHashes
+                        })
+                    };
+
+                    // Delete the legacy single file
+                    files[primaryFileName] = null;
+
+                    const patchRes = await this.fetchWithTimeout(
+                        `https://api.github.com/gists/${sys.meta.gistId}`,
+                        { method: 'PATCH', headers, body: JSON.stringify({ files }) }
+                    );
+                    if (!patchRes.ok) throw new Error("Migration push failed");
+                    const updatedGist = await patchRes.json();
+
+                    sys.meta.chunkHashes = newHashes;
+                    sys.meta.lastGistDate = updatedGist.updated_at;
+                    sys.meta.isDirty = false;
+                    sys.meta.dirtyChunks = [];
+                    sys.meta.lastSync = Date.now();
+                    sys.saveMeta();
+                    sys.updateTagsIndex();
+                    sys.render();
+                    sys.updateGistStatus();
+                    sys.notify("Migrated to chunked sync");
                 }
             },
 
@@ -1759,7 +1972,7 @@
                     console.error('ALBEDO: Failed to persist new block', err);
                     this.notify('Storage error — block may not persist');
                 });
-                this.markDirty();
+                this.markDirty(block.id);
             },
 
             /**
@@ -1792,7 +2005,7 @@
                         console.error('ALBEDO: Failed to persist block update', err);
                         this.notify('Storage error — edit may not persist');
                     });
-                    this.markDirty();
+                    this.markDirty(id);
                 }
             },
 
@@ -1805,7 +2018,7 @@
                     console.error('ALBEDO: Failed to delete block from storage', err);
                     this.notify('Storage error — deletion may not persist');
                 });
-                this.markDirty();
+                this.markDirty(id);
             },
 
             /** Toggles the pinned state of a block. Pinned blocks float to the top. */
@@ -1817,12 +2030,64 @@
                 db.put('blocks', this.state[idx]).catch(err => {
                     console.error('ALBEDO: Failed to persist pin toggle', err);
                 });
-                this.markDirty();
+                this.markDirty(id);
             },
 
-            /** Flags the notebook as having unsaved local changes (for Gist sync). */
-            markDirty() {
-                this.meta.isDirty = true;
+            /**
+             * Returns the Gist chunk filename for a given block ID.
+             * Blocks are bucketed by the first hex character of their UUID → 16 buckets.
+             */
+            getChunkKey(blockId) {
+                return 'albedo_' + blockId.charAt(0).toLowerCase();
+            },
+
+            /**
+             * Groups an array of blocks into chunk buckets.
+             * @returns {Object} e.g. { albedo_a: [block, …], albedo_3: [block, …] }
+             */
+            groupByChunk(blocks) {
+                const chunks = {};
+                for (const block of blocks) {
+                    const key = this.getChunkKey(block.id);
+                    if (!chunks[key]) chunks[key] = [];
+                    chunks[key].push(block);
+                }
+                return chunks;
+            },
+
+            /**
+             * Fast non-cryptographic hash (djb2) for change detection.
+             * Returns a base-36 string — not for security, just diffing.
+             */
+            fastHash(str) {
+                let h = 5381;
+                for (let i = 0; i < str.length; i++) {
+                    h = ((h << 5) + h) + str.charCodeAt(i);
+                    h |= 0;
+                }
+                return (h >>> 0).toString(36);
+            },
+
+            /**
+             * Flags specific chunks as dirty (modified since last sync).
+             * @param {string} [blockId] - If provided, only the chunk owning this block is dirtied.
+             *                             If omitted, ALL chunks currently in state are dirtied.
+             */
+            markDirty(blockId) {
+                if (!Array.isArray(this.meta.dirtyChunks)) this.meta.dirtyChunks = [];
+                if (blockId) {
+                    const chunk = this.getChunkKey(blockId);
+                    if (!this.meta.dirtyChunks.includes(chunk)) {
+                        this.meta.dirtyChunks.push(chunk);
+                    }
+                } else {
+                    // Mark every chunk that contains blocks
+                    const allChunks = [...new Set(this.state.map(b => this.getChunkKey(b.id)))];
+                    for (const c of allChunks) {
+                        if (!this.meta.dirtyChunks.includes(c)) this.meta.dirtyChunks.push(c);
+                    }
+                }
+                this.meta.isDirty = this.meta.dirtyChunks.length > 0;
                 this.saveMeta();
             },
 
