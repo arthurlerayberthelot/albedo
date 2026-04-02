@@ -78,8 +78,8 @@
             background: var(--bg);
             color: var(--ink);
             font-family: var(--font);
-            font-size: 13px;
-            line-height: 1.4;
+            font-size: 18px;
+            line-height: 1.5;
             height: 100dvh;
             display: flex;
             flex-direction: column;
@@ -97,7 +97,7 @@
             background: var(--ink);
             color: var(--bg);
             font-family: var(--font);
-            font-size: 11px;
+            font-size: 16px;
             font-weight: bold;
             padding: 4px 8px;
             text-align: center;
@@ -117,7 +117,7 @@
             flex-shrink: 0;
             background: var(--bg);
             border-bottom: 2px solid var(--border);
-            padding: 6px 0;
+            padding: 10px 0;
             position: sticky;
             top: 0;
             z-index: 100;
@@ -142,11 +142,12 @@
             display: flex;
             align-items: center;
             gap: 4px;
+            position: relative;
         }
 
         #folder-label {
             font-family: var(--font);
-            font-size: 13px;
+            font-size: 18px;
             color: var(--ink);
             font-weight: bold;
             flex-shrink: 0;
@@ -168,7 +169,7 @@
             right: 8px;
             top: 0;
             font-family: var(--font);
-            font-size: 11px;
+            font-size: 16px;
             color: var(--meta);
             background: var(--code-bg);
             padding: 2px 4px;
@@ -190,7 +191,7 @@
             background: var(--border);
             color: var(--bg);
             padding: 0 3px;
-            font-size: 10px;
+            font-size: 15px;
             margin-right: 4px;
         }
 
@@ -200,7 +201,7 @@
             border: none;
             background: transparent;
             font-family: var(--font);
-            font-size: 13px;
+            font-size: 18px;
             color: var(--ink);
             line-height: 1.4;
             padding: 2px 0;
@@ -216,6 +217,55 @@
         }
 
         /* ========================================================================== */
+        /* --- FOLDER DROPDOWN ---                                                    */
+        /* ========================================================================== */
+        #folder-dropdown {
+            display: none;
+            position: absolute;
+            left: 0;
+            right: 0;
+            top: 100%;
+            background: var(--bg);
+            border: 2px solid var(--border);
+            border-top: none;
+            z-index: 200;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        #folder-dropdown.active {
+            display: block;
+        }
+
+        .folder-item {
+            display: block;
+            width: 100%;
+            padding: 6px 12px;
+            font-family: var(--font);
+            font-size: 18px;
+            color: var(--ink);
+            background: none;
+            border: none;
+            border-bottom: 1px solid var(--border);
+            text-align: left;
+            cursor: pointer;
+        }
+
+        .folder-item:last-child {
+            border-bottom: none;
+        }
+
+        .folder-item:hover {
+            background: var(--ink);
+            color: var(--bg);
+        }
+
+        .folder-item.is-current {
+            color: var(--accent);
+            font-weight: bold;
+        }
+
+        /* ========================================================================== */
         /* --- MAIN FEED ---                                                          */
         /* ========================================================================== */
         main {
@@ -228,7 +278,8 @@
         /* --- BLOCKS ---                                                             */
         /* ========================================================================== */
         .block {
-            padding: 4px 0;
+            padding: 8px 0;
+            margin-bottom: 4px;
             border-bottom: 1px solid var(--border);
             contain: content;
         }
@@ -241,8 +292,8 @@
         .block.has-color {
             background: var(--b-bg);
             color: var(--b-ink);
-            padding: 6px;
-            margin: 0 -8px;
+            padding: 10px;
+            margin-bottom: 4px;
             width: calc(100% + 16px);
         }
 
@@ -282,7 +333,7 @@
             justify-content: space-between;
             align-items: baseline;
             margin-bottom: 2px;
-            font-size: 10px;
+            font-size: 15px;
             color: var(--meta);
         }
 
@@ -298,7 +349,7 @@
             background: none;
             color: var(--meta);
             font-family: var(--font);
-            font-size: 12px;
+            font-size: 17px;
             padding: 0;
             opacity: 0;
         }
@@ -328,7 +379,7 @@
         /* --- CONTENT ---                                                            */
         /* ========================================================================== */
         .content {
-            font-size: 13px;
+            font-size: 18px;
             line-height: 1.4;
             color: var(--ink);
             word-wrap: break-word;
@@ -347,13 +398,13 @@
 
         .content code {
             font-family: var(--font);
-            font-size: 12px;
+            font-size: 17px;
             background: var(--code-bg);
             padding: 0 2px;
         }
 
         .md-h1 {
-            font-size: 15px;
+            font-size: 20px;
             font-weight: bold;
             margin-top: 8px;
             color: var(--ink);
@@ -361,7 +412,7 @@
         }
 
         .md-h2 {
-            font-size: 14px;
+            font-size: 19px;
             font-weight: bold;
             margin-top: 6px;
             color: var(--ink);
@@ -380,7 +431,7 @@
             padding: 0 3px;
             background: var(--accent-dim);
             color: var(--accent);
-            font-size: 11px;
+            font-size: 16px;
             font-weight: bold;
             margin-right: 4px;
         }
@@ -398,7 +449,7 @@
             background: var(--code-bg);
             color: var(--meta);
             border: 1px solid var(--border);
-            font-size: 11px;
+            font-size: 16px;
             margin-right: 4px;
         }
 
@@ -420,7 +471,7 @@
         .editor {
             width: 100%;
             font-family: var(--font);
-            font-size: 13px;
+            font-size: 18px;
             background: var(--bg);
             color: var(--ink);
             border: 2px solid var(--accent);
@@ -451,7 +502,7 @@
             display: flex;
             align-items: center;
             gap: 8px;
-            font-size: 10px;
+            font-size: 15px;
             color: var(--meta);
         }
 
@@ -470,7 +521,7 @@
         }
 
         .stats {
-            font-size: 10px;
+            font-size: 15px;
             color: var(--meta);
         }
 
@@ -488,7 +539,7 @@
             border: 1px solid var(--border);
             padding: 2px 6px;
             font-family: var(--font);
-            font-size: 10px;
+            font-size: 15px;
             font-weight: bold;
             color: var(--ink);
             cursor: pointer;
@@ -515,7 +566,7 @@
         #sync-date {
             display: inline-block;
             margin-left: 4px;
-            font-size: 10px;
+            font-size: 15px;
         }
 
         #sync-date {
@@ -554,7 +605,7 @@
         .void-msg {
             text-align: center;
             color: var(--meta);
-            font-size: 11px;
+            font-size: 16px;
             margin-top: 40px;
             text-transform: uppercase;
         }
@@ -618,7 +669,7 @@
 
             .ctrl-btn {
                 padding: 6px 4px;
-                font-size: 11px;
+                font-size: 16px;
                 min-height: 36px;
                 flex: 1;
                 text-align: center;
@@ -643,6 +694,7 @@
             <textarea id="commander" placeholder="Write or type '?' to search..." autocomplete="off"
                 rows="1"></textarea>
             <div id="suggestion"></div>
+            <div id="folder-dropdown"></div>
         </div>
     </header>
 
@@ -1154,6 +1206,7 @@
                         this.parent.ui.input.style.height = 'auto';
                         this.parent.ui.suggestion.classList.remove('active');
                         this.parent.activeSuggestion = null;
+                        this.parent.hideFolderDropdown();
                     };
 
                     this.parent.ui.input.addEventListener('input', (e) => {
@@ -1231,6 +1284,12 @@
                         }
                         else {
                             this.parent.ui.suggestion.classList.remove('active');
+                        }
+
+                        if (val.startsWith('/') && !val.startsWith('?')) {
+                            this.parent.updateFolderDropdown(val);
+                        } else {
+                            this.parent.hideFolderDropdown();
                         }
 
                         if (val.startsWith('?~')) {
@@ -1347,6 +1406,7 @@
                             this.parent.ui.header.classList.remove('query-mode');
                             this.parent.ui.suggestion.classList.remove('active');
                             this.parent.activeSuggestion = null;
+                            this.parent.hideFolderDropdown();
                             this.parent.render();
                         }
                     });
@@ -1370,7 +1430,8 @@
                 baseLabel: document.getElementById('base-label'),
                 folderLabel: document.getElementById('folder-label'),
                 toast: document.getElementById('toast'),
-                suggestion: document.getElementById('suggestion')
+                suggestion: document.getElementById('suggestion'),
+                folderDropdown: document.getElementById('folder-dropdown')
             },
 
             requestRender(options = {}) {
@@ -2001,17 +2062,17 @@
                     box.style.cssText = "background:var(--bg);padding:16px;border:2px solid var(--border);max-width:400px;width:90%;font-family:var(--font);color:var(--ink);text-align:center;";
                     const text = document.createElement('div');
                     text.innerText = msg;
-                    text.style.cssText = "margin-bottom:16px;white-space:pre-wrap;line-height:1.4;font-size:13px;";
+                    text.style.cssText = "margin-bottom:16px;white-space:pre-wrap;line-height:1.4;font-size:18px;";
                     const actions = document.createElement('div');
                     actions.style.cssText = "display:flex;gap:8px;justify-content:center;";
                     const btn1 = document.createElement('button');
                     btn1.innerText = btnConfirm;
-                    btn1.style.cssText = "padding:4px 12px;border:2px solid var(--border);cursor:pointer;background:var(--ink);color:var(--bg);font-weight:bold;font-family:var(--font);font-size:12px;";
+                    btn1.style.cssText = "padding:4px 12px;border:2px solid var(--border);cursor:pointer;background:var(--ink);color:var(--bg);font-weight:bold;font-family:var(--font);font-size:17px;";
                     btn1.onclick = () => { overlay.remove(); resolve(true); };
                     if (type === 'confirm') {
                         const btn2 = document.createElement('button');
                         btn2.innerText = btnCancel;
-                        btn2.style.cssText = "padding:4px 12px;border:2px solid var(--border);cursor:pointer;background:var(--bg);color:var(--ink);font-weight:bold;font-family:var(--font);font-size:12px;";
+                        btn2.style.cssText = "padding:4px 12px;border:2px solid var(--border);cursor:pointer;background:var(--bg);color:var(--ink);font-weight:bold;font-family:var(--font);font-size:17px;";
                         btn2.onclick = () => { overlay.remove(); resolve(false); };
                         actions.appendChild(btn2);
                     }
@@ -2031,6 +2092,42 @@
                 this.toastTid = setTimeout(() => t.classList.remove('active'), 2500);
             },
 
+            updateFolderDropdown(filter) {
+                const dd = this.ui.folderDropdown;
+                const folders = Array.from(this.foldersIndex).sort();
+                const filtered = filter.length > 1
+                    ? folders.filter(f => f.toLowerCase().startsWith(filter.toLowerCase()))
+                    : folders;
+                if (filtered.length === 0) {
+                    dd.classList.remove('active');
+                    return;
+                }
+                dd.innerHTML = '';
+                filtered.forEach(folder => {
+                    const btn = document.createElement('button');
+                    btn.className = 'folder-item' + (folder === this.currentFolder ? ' is-current' : '');
+                    btn.innerText = folder;
+                    btn.onmousedown = (e) => {
+                        e.preventDefault();
+                        this.currentFolder = folder;
+                        this.foldersIndex.add(folder);
+                        this.ui.folderLabel.innerText = folder;
+                        this.ui.folderLabel.title = `Current Folder: ${folder}`;
+                        this.ui.input.value = '';
+                        this.ui.input.style.height = 'auto';
+                        dd.classList.remove('active');
+                        this.requestRender({});
+                        this.notify(`Directory: ${folder}`);
+                    };
+                    dd.appendChild(btn);
+                });
+                dd.classList.add('active');
+            },
+
+            hideFolderDropdown() {
+                this.ui.folderDropdown.classList.remove('active');
+            },
+
             showTree() {
                 const overlay = document.createElement('div');
                 overlay.style.cssText = "position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:1000;";
@@ -2038,14 +2135,14 @@
                 box.style.cssText = "background:var(--bg);padding:16px;border:2px solid var(--border);max-width:400px;width:90%;font-family:var(--font);color:var(--ink);max-height:80vh;overflow-y:auto;display:flex;flex-direction:column;gap:4px;";
                 const title = document.createElement('div');
                 title.innerText = "FOLDERS";
-                title.style.cssText = "font-weight:bold;font-size:12px;text-transform:uppercase;color:var(--meta);margin-bottom:8px;text-align:center;";
+                title.style.cssText = "font-weight:bold;font-size:17px;text-transform:uppercase;color:var(--meta);margin-bottom:8px;text-align:center;";
                 box.appendChild(title);
                 const sortedFolders = Array.from(this.foldersIndex).sort();
                 sortedFolders.forEach(folder => {
                     const btn = document.createElement('button');
                     btn.innerText = folder;
                     const isCurrent = folder === this.currentFolder;
-                    btn.style.cssText = `text-align:left;padding:4px 8px;border:1px solid ${isCurrent ? 'var(--accent)' : 'var(--border)'};cursor:pointer;background:${isCurrent ? 'var(--accent-dim)' : 'var(--bg)'};color:${isCurrent ? 'var(--accent)' : 'var(--ink)'};font-family:var(--font);font-size:13px;`;
+                    btn.style.cssText = `text-align:left;padding:4px 8px;border:1px solid ${isCurrent ? 'var(--accent)' : 'var(--border)'};cursor:pointer;background:${isCurrent ? 'var(--accent-dim)' : 'var(--bg)'};color:${isCurrent ? 'var(--accent)' : 'var(--ink)'};font-family:var(--font);font-size:18px;`;
                     btn.onclick = () => {
                         overlay.remove();
                         if (!isCurrent) {
@@ -2060,7 +2157,7 @@
                 });
                 const closeBtn = document.createElement('button');
                 closeBtn.innerText = "Close";
-                closeBtn.style.cssText = "margin-top:8px;padding:4px 12px;border:2px solid var(--border);cursor:pointer;background:var(--ink);color:var(--bg);font-weight:bold;font-family:var(--font);font-size:12px;";
+                closeBtn.style.cssText = "margin-top:8px;padding:4px 12px;border:2px solid var(--border);cursor:pointer;background:var(--ink);color:var(--bg);font-weight:bold;font-family:var(--font);font-size:17px;";
                 closeBtn.onclick = () => overlay.remove();
                 box.appendChild(closeBtn);
                 overlay.onclick = (e) => { if (e.target === overlay) overlay.remove(); };
