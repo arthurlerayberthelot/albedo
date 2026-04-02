@@ -1,0 +1,2076 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Content-Security-Policy"
+        content="default-src 'none'; style-src 'unsafe-inline'; img-src 'self' data: blob: https://upload.wikimedia.org; connect-src 'self' https://fr.wiktionary.org https://fr.wikipedia.org https://api.crossref.org https://api.github.com https://geocoding-api.open-meteo.com https://archive-api.open-meteo.com; script-src 'unsafe-inline';">
+    <title>ALBEDO</title>
+
+    <style>
+        /* ========================================================================== */
+        /* --- BRUTALIST TOKENS ---                                                   */
+        /* ========================================================================== */
+        :root {
+            --bg: #ffffff;
+            --surface: #ffffff;
+            --ink: #000000;
+            --meta: #666666;
+            --border: #000000;
+            --accent: #0000ff;
+            --accent-dim: #e8e8ff;
+            --code-bg: #f0f0f0;
+            --danger: #cc0000;
+            --font: 'Courier New', 'Courier', monospace;
+            --max-w: 780px;
+
+            --c-red-bg: #ffcccc;
+            --c-red-ink: #990000;
+            --c-blue-bg: #ccccff;
+            --c-blue-ink: #000099;
+            --c-green-bg: #ccffcc;
+            --c-green-ink: #006600;
+            --c-yellow-bg: #ffffcc;
+            --c-yellow-ink: #666600;
+            --c-purple-bg: #eeccff;
+            --c-purple-ink: #660099;
+            --c-gray-bg: #e0e0e0;
+            --c-gray-ink: #333333;
+        }
+
+        html[data-theme="dark"] {
+            --bg: #000000;
+            --surface: #111111;
+            --ink: #cccccc;
+            --meta: #666666;
+            --border: #444444;
+            --accent: #6666ff;
+            --accent-dim: #1a1a33;
+            --code-bg: #1a1a1a;
+
+            --c-red-bg: #330000;
+            --c-red-ink: #ff6666;
+            --c-blue-bg: #000033;
+            --c-blue-ink: #6666ff;
+            --c-green-bg: #003300;
+            --c-green-ink: #66ff66;
+            --c-yellow-bg: #333300;
+            --c-yellow-ink: #ffff66;
+            --c-purple-bg: #1a0033;
+            --c-purple-ink: #cc66ff;
+            --c-gray-bg: #222222;
+            --c-gray-ink: #aaaaaa;
+        }
+
+        /* ========================================================================== */
+        /* --- BASE ---                                                               */
+        /* ========================================================================== */
+        * {
+            box-sizing: border-box;
+            outline: none;
+            -webkit-tap-highlight-color: transparent;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background: var(--bg);
+            color: var(--ink);
+            font-family: var(--font);
+            font-size: 13px;
+            line-height: 1.4;
+            height: 100dvh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* ========================================================================== */
+        /* --- TOAST ---                                                              */
+        /* ========================================================================== */
+        #toast {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            background: var(--ink);
+            color: var(--bg);
+            font-family: var(--font);
+            font-size: 11px;
+            font-weight: bold;
+            padding: 4px 8px;
+            text-align: center;
+            z-index: 999;
+            pointer-events: none;
+            display: none;
+        }
+
+        #toast.active {
+            display: block;
+        }
+
+        /* ========================================================================== */
+        /* --- HEADER ---                                                             */
+        /* ========================================================================== */
+        header {
+            flex-shrink: 0;
+            background: var(--bg);
+            border-bottom: 2px solid var(--border);
+            padding: 6px 0;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        header.query-mode {
+            border-bottom-color: var(--accent);
+        }
+
+        header.query-mode #commander {
+            color: var(--accent);
+        }
+
+        .container {
+            max-width: var(--max-w);
+            margin: 0 auto;
+            padding: 0 8px;
+            position: relative;
+        }
+
+        .container-header {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        #folder-label {
+            font-family: var(--font);
+            font-size: 13px;
+            color: var(--ink);
+            font-weight: bold;
+            flex-shrink: 0;
+            user-select: none;
+            cursor: pointer;
+            padding: 2px 4px;
+            background: none;
+        }
+
+        #folder-label:hover {
+            text-decoration: underline;
+        }
+
+        /* ========================================================================== */
+        /* --- COMMANDER ---                                                          */
+        /* ========================================================================== */
+        #suggestion {
+            position: absolute;
+            right: 8px;
+            top: 0;
+            font-family: var(--font);
+            font-size: 11px;
+            color: var(--meta);
+            background: var(--code-bg);
+            padding: 2px 4px;
+            pointer-events: none;
+            display: none;
+        }
+
+        #suggestion.active {
+            display: inline-block;
+        }
+
+        #suggestion b {
+            color: var(--accent);
+            font-weight: bold;
+        }
+
+        #suggestion kbd {
+            font-family: var(--font);
+            background: var(--border);
+            color: var(--bg);
+            padding: 0 3px;
+            font-size: 10px;
+            margin-right: 4px;
+        }
+
+        #commander {
+            flex-grow: 1;
+            width: 100%;
+            border: none;
+            background: transparent;
+            font-family: var(--font);
+            font-size: 13px;
+            color: var(--ink);
+            line-height: 1.4;
+            padding: 2px 0;
+            padding-right: 80px;
+            resize: none;
+            overflow: hidden;
+            min-height: 20px;
+            max-height: 300px;
+        }
+
+        #commander::placeholder {
+            color: var(--meta);
+        }
+
+        /* ========================================================================== */
+        /* --- MAIN FEED ---                                                          */
+        /* ========================================================================== */
+        main {
+            flex-grow: 1;
+            overflow-y: auto;
+            padding: 8px 0 80px 0;
+        }
+
+        /* ========================================================================== */
+        /* --- BLOCKS ---                                                             */
+        /* ========================================================================== */
+        .block {
+            padding: 4px 0;
+            border-bottom: 1px solid var(--border);
+            contain: content;
+        }
+
+        .block.is-pinned {
+            border-left: 3px solid var(--accent);
+            padding-left: 6px;
+        }
+
+        .block.has-color {
+            background: var(--b-bg);
+            color: var(--b-ink);
+            padding: 6px;
+            margin: 0 -8px;
+            width: calc(100% + 16px);
+        }
+
+        .block.has-color.is-pinned {
+            border-left: 3px solid var(--b-ink);
+        }
+
+        .block.has-color .content,
+        .block.has-color .content b,
+        .block.has-color .md-h1,
+        .block.has-color .md-h2 {
+            color: var(--b-ink);
+        }
+
+        .block.has-color .block-header {
+            color: var(--b-ink);
+            opacity: 0.7;
+        }
+
+        .block.has-color .action-btn {
+            color: var(--b-ink);
+        }
+
+        .block.has-color .token {
+            background: none;
+            color: var(--b-ink);
+            border: 1px solid var(--b-ink);
+        }
+
+        .block.has-color code {
+            background: none;
+            color: var(--b-ink);
+        }
+
+        .block-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            margin-bottom: 2px;
+            font-size: 10px;
+            color: var(--meta);
+        }
+
+        .action-btns {
+            display: flex;
+            gap: 6px;
+            align-items: center;
+        }
+
+        .action-btn {
+            cursor: pointer;
+            border: none;
+            background: none;
+            color: var(--meta);
+            font-family: var(--font);
+            font-size: 12px;
+            padding: 0;
+            opacity: 0;
+        }
+
+        .block:hover .action-btn {
+            opacity: 1;
+        }
+
+        .action-btn:hover {
+            color: var(--accent);
+        }
+
+        .action-btn.del-btn:hover {
+            color: var(--danger);
+        }
+
+        .action-btn.pin-btn.active {
+            opacity: 1;
+            color: var(--accent);
+        }
+
+        .block.has-color .action-btn.pin-btn.active {
+            color: var(--b-ink);
+        }
+
+        /* ========================================================================== */
+        /* --- CONTENT ---                                                            */
+        /* ========================================================================== */
+        .content {
+            font-size: 13px;
+            line-height: 1.4;
+            color: var(--ink);
+            word-wrap: break-word;
+            white-space: pre-wrap;
+            cursor: text;
+        }
+
+        .content b {
+            font-weight: bold;
+            color: var(--ink);
+        }
+
+        .content i {
+            font-style: italic;
+        }
+
+        .content code {
+            font-family: var(--font);
+            font-size: 12px;
+            background: var(--code-bg);
+            padding: 0 2px;
+        }
+
+        .md-h1 {
+            font-size: 15px;
+            font-weight: bold;
+            margin-top: 8px;
+            color: var(--ink);
+            text-transform: uppercase;
+        }
+
+        .md-h2 {
+            font-size: 14px;
+            font-weight: bold;
+            margin-top: 6px;
+            color: var(--ink);
+        }
+
+        .md-quote {
+            border-left: 2px solid var(--accent);
+            padding-left: 8px;
+            color: var(--meta);
+            font-style: italic;
+            margin: 2px 0;
+        }
+
+        .token {
+            display: inline;
+            padding: 0 3px;
+            background: var(--accent-dim);
+            color: var(--accent);
+            font-size: 11px;
+            font-weight: bold;
+            margin-right: 4px;
+        }
+
+        .color-token {
+            font-weight: bold;
+            background: transparent !important;
+            padding: 0;
+            margin-right: 4px;
+        }
+
+        .token-pattern {
+            display: inline;
+            padding: 0 3px;
+            background: var(--code-bg);
+            color: var(--meta);
+            border: 1px solid var(--border);
+            font-size: 11px;
+            margin-right: 4px;
+        }
+
+        .token-pattern strong {
+            color: var(--ink);
+            font-weight: bold;
+        }
+
+        .block.has-color .token-pattern {
+            background: none;
+            color: var(--b-ink);
+            border-color: var(--b-ink);
+        }
+
+        .block.has-color .token-pattern strong {
+            color: var(--b-ink);
+        }
+
+        .editor {
+            width: 100%;
+            font-family: var(--font);
+            font-size: 13px;
+            background: var(--bg);
+            color: var(--ink);
+            border: 2px solid var(--accent);
+            padding: 4px;
+            resize: none;
+            display: block;
+            line-height: 1.4;
+        }
+
+        /* ========================================================================== */
+        /* --- FOOTER ---                                                             */
+        /* ========================================================================== */
+        footer {
+            flex-shrink: 0;
+            background: var(--bg);
+            border-top: 2px solid var(--border);
+            padding: 4px 0;
+            z-index: 50;
+        }
+
+        .footer-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .deck-left {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 10px;
+            color: var(--meta);
+        }
+
+        .brand {
+            font-weight: bold;
+            color: var(--ink);
+        }
+
+        .base-name {
+            text-transform: uppercase;
+        }
+
+        .deck-right {
+            display: flex;
+            align-items: center;
+        }
+
+        .stats {
+            font-size: 10px;
+            color: var(--meta);
+        }
+
+        .stats.divider {
+            opacity: 0.5;
+        }
+
+        .controls {
+            display: flex;
+            gap: 2px;
+        }
+
+        .ctrl-btn {
+            background: none;
+            border: 1px solid var(--border);
+            padding: 2px 6px;
+            font-family: var(--font);
+            font-size: 10px;
+            font-weight: bold;
+            color: var(--ink);
+            cursor: pointer;
+            text-transform: uppercase;
+        }
+
+        .ctrl-btn:hover {
+            background: var(--ink);
+            color: var(--bg);
+        }
+
+        .ctrl-btn.danger:hover {
+            background: var(--danger);
+            color: #ffffff;
+        }
+
+        #upload-trigger {
+            display: none;
+        }
+
+        /* --- INDICATORS --- */
+        #gist-indicator,
+        #net-indicator,
+        #sync-date {
+            display: inline-block;
+            margin-left: 4px;
+            font-size: 10px;
+        }
+
+        #sync-date {
+            color: var(--meta);
+        }
+
+        #gist-indicator {
+            color: var(--meta);
+        }
+
+        #gist-indicator::after {
+            content: 'uns';
+        }
+
+        .has-gist #gist-indicator {
+            color: var(--ink);
+        }
+
+        .has-gist #gist-indicator::after {
+            content: 'syn';
+        }
+
+        #net-indicator.is-online::after {
+            content: '[ON]';
+            color: #006600;
+        }
+
+        #net-indicator.is-offline::after {
+            content: '[OFF]';
+            color: var(--danger);
+        }
+
+        /* ========================================================================== */
+        /* --- UTILS ---                                                              */
+        /* ========================================================================== */
+        .void-msg {
+            text-align: center;
+            color: var(--meta);
+            font-size: 11px;
+            margin-top: 40px;
+            text-transform: uppercase;
+        }
+
+        mark {
+            background: #ffff00;
+            color: #000000;
+            padding: 0;
+            font-weight: inherit;
+        }
+
+        .block.has-color mark {
+            background: var(--b-ink);
+            color: var(--b-bg);
+        }
+
+        .wiki-img {
+            display: block;
+            max-width: 100%;
+            max-height: 300px;
+            width: auto;
+            margin: 4px 0;
+            object-fit: cover;
+            background: var(--code-bg);
+            content-visibility: auto;
+        }
+
+        .block.has-color .wiki-img {
+            border: 1px solid var(--b-ink);
+        }
+
+        /* ========================================================================== */
+        /* --- RESPONSIVE ---                                                         */
+        /* ========================================================================== */
+        @media (max-width: 520px) {
+            header {
+                padding: 4px 0;
+            }
+
+            .footer-row {
+                flex-direction: column;
+                gap: 4px;
+                align-items: stretch;
+            }
+
+            .deck-left {
+                justify-content: center;
+                flex-wrap: wrap;
+                width: 100%;
+                gap: 6px;
+            }
+
+            .deck-right {
+                width: 100%;
+            }
+
+            .controls {
+                justify-content: space-between;
+                width: 100%;
+            }
+
+            .ctrl-btn {
+                padding: 6px 4px;
+                font-size: 11px;
+                min-height: 36px;
+                flex: 1;
+                text-align: center;
+            }
+
+            .action-btn {
+                opacity: 0.6;
+                padding: 2px 4px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <div id="toast">Ready</div>
+
+    <header id="header">
+        <div class="container container-header">
+            <span id="folder-label" title="Current Folder"
+                onclick="sys.showTree()">/</span>
+            <textarea id="commander" placeholder="Write or type '?' to search..." autocomplete="off"
+                rows="1"></textarea>
+            <div id="suggestion"></div>
+        </div>
+    </header>
+
+    <main id="scroll-zone">
+        <div class="container" id="feed"></div>
+    </main>
+
+    <footer>
+        <div class="container footer-row">
+            <div class="deck-left">
+                <span class="brand">ALBEDO</span>
+                <span class="base-name" id="base-label">PRIMARY</span>
+                <span id="gist-indicator" title="GitHub Gist Connected"></span>
+                <span id="net-indicator" class="is-online" title="Network Status"></span>
+                <span id="sync-date" title="Last Sync Date"></span>
+                <span class="stats divider">|</span>
+                <span class="stats" id="stats">0 · 0 KB</span>
+            </div>
+
+            <div class="deck-right">
+                <div class="controls">
+                    <input type="file" id="upload-trigger" accept=".json">
+                    <button class="ctrl-btn" onclick="sys.api.sync()">Sync</button>
+                    <button class="ctrl-btn" onclick="sys.exportMD()">Md</button>
+                    <button class="ctrl-btn" onclick="sys.exportJSON()">Json</button>
+                    <button class="ctrl-btn" onclick="document.getElementById('upload-trigger').click()">Load</button>
+                    <button class="ctrl-btn" onclick="sys.toggleTheme()" id="theme-toggle">Auto</button>
+                    <button class="ctrl-btn danger" onclick="sys.wipe()">Clear</button>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        const db = {
+            name: 'albedo_db', version: 1, core: null,
+            async init() {
+                return new Promise((resolve, reject) => {
+                    const req = indexedDB.open(this.name, this.version);
+                    req.onupgradeneeded = (e) => {
+                        const idb = e.target.result;
+                        if (!idb.objectStoreNames.contains('blocks')) idb.createObjectStore('blocks', { keyPath: 'id' });
+                        if (!idb.objectStoreNames.contains('meta')) idb.createObjectStore('meta', { keyPath: 'id' });
+                    };
+                    req.onsuccess = (e) => { this.core = e.target.result; resolve(); };
+                    req.onerror = (e) => { console.error("IndexedDB Error", e.target.error); reject(e.target.error); };
+                });
+            },
+            async getAll(storeName) {
+                return new Promise((resolve, reject) => {
+                    const tx = this.core.transaction(storeName, 'readonly');
+                    const req = tx.objectStore(storeName).getAll();
+                    req.onsuccess = () => resolve(req.result);
+                    req.onerror = (e) => reject(e.target.error);
+                });
+            },
+            async put(storeName, item) {
+                return new Promise((resolve, reject) => {
+                    const tx = this.core.transaction(storeName, 'readwrite');
+                    tx.objectStore(storeName).put(item);
+                    tx.oncomplete = () => resolve();
+                    tx.onerror = (e) => reject(e.target.error);
+                });
+            },
+            async delete(storeName, id) {
+                return new Promise((resolve, reject) => {
+                    const tx = this.core.transaction(storeName, 'readwrite');
+                    tx.objectStore(storeName).delete(id);
+                    tx.oncomplete = () => resolve();
+                    tx.onerror = (e) => reject(e.target.error);
+                });
+            },
+            async clear(storeName) {
+                return new Promise((resolve, reject) => {
+                    const tx = this.core.transaction(storeName, 'readwrite');
+                    tx.objectStore(storeName).clear();
+                    tx.oncomplete = () => resolve();
+                    tx.onerror = (e) => reject(e.target.error);
+                });
+            }
+        };
+
+        const sys = {
+            state: [],
+            meta: { id: 'primary', name: 'PRIMARY', theme: 'auto' },
+            currentFolder: '/',
+            tagsIndex: new Set(),
+            patternsIndex: new Set(),
+            foldersIndex: new Set(['/']),
+            currentRenderOptions: {},
+            viewLimit: 50,
+            renderedCount: 0,
+            currentViewData: [],
+            observer: null,
+            renderTID: null,
+            activeSuggestion: null,
+            validColors: ['red', 'blue', 'green', 'yellow', 'purple', 'gray'],
+            validExternals: ['&dic:', '&wiki:', '&source:', '&github:', '&sync:', '&meteo:'],
+
+            api: {
+                parent: null,
+                FETCH_TIMEOUT_MS: 15000,
+                init(p) { this.parent = p; },
+
+                fetchWithTimeout(url, options = {}) {
+                    const controller = new AbortController();
+                    const timeoutId = setTimeout(() => controller.abort(), this.FETCH_TIMEOUT_MS);
+                    return fetch(url, { ...options, signal: controller.signal })
+                        .finally(() => clearTimeout(timeoutId));
+                },
+
+                async fetchCoordinates(locationName) {
+                    const res = await this.fetchWithTimeout(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(locationName)}&count=1&language=fr`);
+                    if (!res.ok) throw new Error("Geocoding failed");
+                    const data = await res.json();
+                    if (!data.results || data.results.length === 0) throw new Error("Location not found");
+                    return data.results[0];
+                },
+
+                async fetchMeteo(query) {
+                    this.parent.notify(`Station Météo...`);
+                    try {
+                        const parts = query.trim().split(/\s+/);
+                        if (parts.length < 2) throw new Error("Bad format");
+                        const dateStr = parts.pop();
+                        const locStr = parts.join(' ');
+                        if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) throw new Error("Bad date format");
+                        this.parent.notify(`Localisation de ${locStr}...`);
+                        const geo = await this.fetchCoordinates(locStr);
+                        this.parent.notify(`Téléchargement archive météo...`);
+                        const meteoUrl = `https://archive-api.open-meteo.com/v1/archive?latitude=${geo.latitude}&longitude=${geo.longitude}&start_date=${dateStr}&end_date=${dateStr}&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,wind_speed_10m_max&timezone=auto`;
+                        const res = await this.fetchWithTimeout(meteoUrl);
+                        if (!res.ok) throw new Error("Meteo archive failed");
+                        const data = await res.json();
+                        if (!data.daily || !data.daily.time || data.daily.time.length === 0) {
+                            throw new Error("No data for date");
+                        }
+                        const d = data.daily;
+                        const tmax = d.temperature_2m_max[0];
+                        const tmin = d.temperature_2m_min[0];
+                        const prec = d.precipitation_sum[0];
+                        const wind = d.wind_speed_10m_max[0];
+                        const cleanLocKey = geo.name.toLowerCase().replace(/[^a-z0-9]/g, '');
+                        let blockText = `#meteo ~lieu:${cleanLocKey} ~date:${dateStr} !blue\n\n**${geo.name}, ${geo.country || ''}**\n*Bulletin du ${dateStr}*\n`;
+                        blockText += `Température : Min ${tmin}°C / Max ${tmax}°C\n`;
+                        blockText += `Précipitations : ${prec} mm\n`;
+                        blockText += `Vent max : ${wind} km/h`;
+                        this.parent.add(blockText);
+                        this.parent.notify("Archive météo générée");
+                    } catch (err) {
+                        if (err.message === "Bad format" || err.message === "Bad date format") {
+                            this.parent.notify("Format erroné: &meteo: Lieu YYYY-MM-DD");
+                        } else if (err.message === "Location not found") {
+                            this.parent.notify("Lieu introuvable");
+                        } else if (err.message === "No data for date") {
+                            this.parent.notify("Date hors période archive");
+                        } else {
+                            this.parent.notify("Erreur réseau Météo");
+                        }
+                        console.error("ALBEDO Meteo Error:", err);
+                    }
+                },
+
+                async fetchDefinition(word) {
+                    this.parent.notify(`Recherche: ${word}...`);
+                    try {
+                        const response = await this.fetchWithTimeout(`https://fr.wiktionary.org/api/rest_v1/page/html/${encodeURIComponent(word)}`);
+                        if (!response.ok) throw new Error("Mot introuvable");
+                        const html = await response.text();
+                        const doc = new DOMParser().parseFromString(html, 'text/html');
+                        const defLists = doc.querySelectorAll('ol');
+                        if (defLists.length === 0) throw new Error("Mot introuvable");
+                        let blockText = `#définition ~mot:${word.toLowerCase()} !purple\n\n**${word}**`;
+                        defLists[0].querySelectorAll('ul, dl, style, sup').forEach(el => el.remove());
+                        const listItems = Array.from(defLists[0].querySelectorAll(':scope > li')).slice(0, 2);
+                        listItems.forEach((li, index) => {
+                            let text = li.textContent.replace(/\s+/g, ' ').trim();
+                            if (text) blockText += `\n${index + 1}. ${text}`;
+                        });
+                        this.parent.add(blockText);
+                        this.parent.notify("Définition ajoutée");
+                    } catch (err) {
+                        if (err.name === 'AbortError') {
+                            this.parent.notify("Délai dépassé (Wiktionnaire)");
+                        } else {
+                            this.parent.notify(err.message === "Mot introuvable" ? "Mot inconnu" : "Erreur réseau");
+                        }
+                        console.error("ALBEDO Dico Error:", err);
+                    }
+                },
+
+                async fetchWikiSummary(subject) {
+                    this.parent.notify(`Recherche Wiki: ${subject}...`);
+                    try {
+                        const response = await this.fetchWithTimeout(`https://fr.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(subject)}`);
+                        if (!response.ok) {
+                            if (response.status === 404) throw new Error("Sujet introuvable");
+                            throw new Error("Erreur réseau");
+                        }
+                        const data = await response.json();
+                        const patternKey = subject.toLowerCase().replace(/\s+/g, '_');
+                        const blockText = `#wiki ~sujet:${patternKey} !gray\n\n**${data.title}**\n${data.extract}`;
+                        this.parent.add(blockText);
+                        this.parent.notify("Résumé ajouté");
+                    } catch (err) {
+                        if (err.name === 'AbortError') {
+                            this.parent.notify("Délai dépassé (Wikipédia)");
+                        } else {
+                            this.parent.notify(err.message === "Sujet introuvable" ? "Sujet inconnu" : "Erreur réseau");
+                        }
+                        console.error("ALBEDO Wiki Error:", err);
+                    }
+                },
+
+                async fetchSources(query) {
+                    this.parent.notify(`Recherche sources: ${query}...`);
+                    try {
+                        const response = await this.fetchWithTimeout(`https://api.crossref.org/works?query=${encodeURIComponent(query)}&select=title,author,URL,published&rows=3`);
+                        if (!response.ok) throw new Error("Erreur réseau");
+                        const data = await response.json();
+                        const items = data.message.items;
+                        if (items.length === 0) throw new Error("Aucune source");
+                        const patternKey = query.toLowerCase().replace(/\s+/g, '_').substring(0, 25);
+                        let blockText = `#sources ~sujet:${patternKey} !yellow\n\n**Littérature académique : "${query}"**`;
+                        items.forEach((item, index) => {
+                            const title = item.title ? item.title[0] : "Titre inconnu";
+                            const year = item.published ? item.published['date-parts'][0][0] : "Date inconnue";
+                            const author = (item.author && item.author[0] && item.author[0].family) ? item.author[0].family : "Auteur inconnu";
+                            const url = item.URL || "";
+                            blockText += `\n\n${index + 1}. *${title}* (${year}) - ${author}.`;
+                            if (url) blockText += `\n[Consulter la source](${url})`;
+                        });
+                        this.parent.add(blockText);
+                        this.parent.notify("Sources ajoutées");
+                    } catch (err) {
+                        if (err.name === 'AbortError') {
+                            this.parent.notify("Délai dépassé (Crossref)");
+                        } else {
+                            this.parent.notify(err.message === "Aucune source" ? "Rien trouvé" : "Erreur réseau");
+                        }
+                        console.error("ALBEDO Source Error:", err);
+                    }
+                },
+
+                async sync() {
+                    if (!this.parent.meta.gistToken || !this.parent.meta.gistId) {
+                        this.parent.notify("Config missing: &github: <TOKEN> <ID>");
+                        return;
+                    }
+                    this.parent.notify("Syncing with GitHub...");
+                    try {
+                        const headers = {
+                            'Authorization': `token ${this.parent.meta.gistToken}`,
+                            'Accept': 'application/vnd.github.v3+json',
+                            'Content-Type': 'application/json'
+                        };
+                        const res = await this.fetchWithTimeout(
+                            `https://api.github.com/gists/${this.parent.meta.gistId}`,
+                            { headers }
+                        );
+                        if (!res.ok) throw new Error(`Gist fetch failed (${res.status})`);
+                        const gist = await res.json();
+                        const fileNames = Object.keys(gist.files);
+                        if (fileNames.length === 0) throw new Error("Gist is empty");
+                        const isV2 = '_albedo_manifest.json' in gist.files;
+                        if (isV2) {
+                            await this._syncV2(gist, headers);
+                        } else {
+                            await this._migrateV1(gist, headers);
+                        }
+                    } catch (err) {
+                        console.error("ALBEDO Sync Error:", err);
+                        if (err.name === 'AbortError') {
+                            this.parent.notify("Sync Error: Timeout");
+                        } else {
+                            this.parent.notify("Sync Error: " + err.message);
+                        }
+                    }
+                },
+
+                async _syncV2(gist, headers) {
+                    const sys = this.parent;
+                    const manifest = JSON.parse(gist.files['_albedo_manifest.json'].content);
+                    const hasRemoteChanges = sys.meta.lastGistDate !== gist.updated_at;
+                    const dirtyChunks = Array.isArray(sys.meta.dirtyChunks) ? sys.meta.dirtyChunks : [];
+                    const isLocalDirty = dirtyChunks.length > 0;
+                    const localHashes = sys.meta.chunkHashes || {};
+                    const remoteBlockCount = manifest.blockCount || 0;
+                    const isLocalEmpty = sys.state.length === 0;
+                    const isRemoteEmpty = remoteBlockCount === 0;
+                    let shouldPull = false;
+                    if (!sys.meta.lastGistDate) {
+                        if (!isRemoteEmpty && isLocalEmpty) shouldPull = true;
+                        else if (isRemoteEmpty && !isLocalEmpty) shouldPull = false;
+                        else if (!isRemoteEmpty && !isLocalEmpty) shouldPull = !isLocalDirty;
+                    } else {
+                        if (hasRemoteChanges && !isLocalDirty) shouldPull = true;
+                        else shouldPull = false;
+                    }
+                    if (!shouldPull && !isLocalDirty && sys.meta.lastGistDate) {
+                        sys.meta.lastSync = Date.now();
+                        sys.saveMeta();
+                        sys.updateGistStatus();
+                        sys.notify("Up to date");
+                        return;
+                    }
+                    if (shouldPull) {
+                        const remoteHashes = manifest.chunks || {};
+                        const changedChunkKeys = [];
+                        const removedChunkKeys = [];
+                        for (const [key, hash] of Object.entries(remoteHashes)) {
+                            if (localHashes[key] !== hash) changedChunkKeys.push(key);
+                        }
+                        for (const key of Object.keys(localHashes)) {
+                            if (!(key in remoteHashes)) removedChunkKeys.push(key);
+                        }
+                        if (changedChunkKeys.length === 0 && removedChunkKeys.length === 0) {
+                            sys.meta.lastGistDate = gist.updated_at;
+                            sys.meta.lastSync = Date.now();
+                            sys.saveMeta();
+                            sys.updateGistStatus();
+                            sys.notify("Up to date");
+                            return;
+                        }
+                        const affectedChunks = new Set([...changedChunkKeys, ...removedChunkKeys]);
+                        const survivingBlocks = [];
+                        for (const block of sys.state) {
+                            if (affectedChunks.has(sys.getChunkKey(block.id))) {
+                                await db.delete('blocks', block.id);
+                            } else {
+                                survivingBlocks.push(block);
+                            }
+                        }
+                        const newBlocks = [];
+                        for (const key of changedChunkKeys) {
+                            const fileName = key + '.json';
+                            const file = gist.files[fileName];
+                            if (!file) continue;
+                            let content = file.content;
+                            if (file.truncated && file.raw_url) {
+                                const rawRes = await this.fetchWithTimeout(file.raw_url, { headers });
+                                if (!rawRes.ok) throw new Error(`Failed to fetch ${fileName}`);
+                                content = await rawRes.text();
+                            }
+                            const chunkBlocks = JSON.parse(content);
+                            for (const block of chunkBlocks) {
+                                await db.put('blocks', block);
+                                newBlocks.push(block);
+                            }
+                        }
+                        sys.state = [...survivingBlocks, ...newBlocks].sort((a, b) => b.ts - a.ts);
+                        sys.meta.chunkHashes = { ...remoteHashes };
+                        sys.meta.lastGistDate = gist.updated_at;
+                        sys.meta.isDirty = false;
+                        sys.meta.dirtyChunks = [];
+                        sys.meta.lastSync = Date.now();
+                        sys.saveMeta();
+                        sys.updateTagsIndex();
+                        sys.render();
+                        sys.updateGistStatus();
+                        const total = changedChunkKeys.length + removedChunkKeys.length;
+                        sys.notify(`Pulled ${total}/${Object.keys(remoteHashes).length} chunks`);
+                    } else {
+                        const localChunks = sys.groupByChunk(sys.state);
+                        const newHashes = {};
+                        const files = {};
+                        for (const [key, blocks] of Object.entries(localChunks)) {
+                            const content = JSON.stringify(blocks);
+                            newHashes[key] = sys.fastHash(content);
+                        }
+                        for (const chunkKey of dirtyChunks) {
+                            const blocks = localChunks[chunkKey] || [];
+                            const fileName = chunkKey + '.json';
+                            if (blocks.length === 0) {
+                                files[fileName] = { content: '[]' };
+                            } else {
+                                files[fileName] = { content: JSON.stringify(blocks) };
+                            }
+                        }
+                        for (const key of dirtyChunks) {
+                            if (!localChunks[key] || localChunks[key].length === 0) {
+                                delete newHashes[key];
+                            }
+                        }
+                        const remoteManifest = JSON.parse(gist.files['_albedo_manifest.json'].content);
+                        const remoteChunkKeys = Object.keys(remoteManifest.chunks || {});
+                        for (const key of remoteChunkKeys) {
+                            if (!localChunks[key] || localChunks[key].length === 0) {
+                                files[key + '.json'] = { content: '[]' };
+                                delete newHashes[key];
+                            }
+                        }
+                        files['_albedo_manifest.json'] = {
+                            content: JSON.stringify({
+                                version: 2,
+                                blockCount: sys.state.length,
+                                chunks: newHashes
+                            })
+                        };
+                        const patchRes = await this.fetchWithTimeout(
+                            `https://api.github.com/gists/${this.parent.meta.gistId}`,
+                            { method: 'PATCH', headers, body: JSON.stringify({ files }) }
+                        );
+                        if (!patchRes.ok) throw new Error(`Push failed (${patchRes.status})`);
+                        const updatedGist = await patchRes.json();
+                        sys.meta.chunkHashes = newHashes;
+                        sys.meta.lastGistDate = updatedGist.updated_at;
+                        sys.meta.isDirty = false;
+                        sys.meta.dirtyChunks = [];
+                        sys.meta.lastSync = Date.now();
+                        sys.saveMeta();
+                        sys.updateGistStatus();
+                        sys.notify(`Pushed ${dirtyChunks.length} chunk${dirtyChunks.length > 1 ? 's' : ''}`);
+                    }
+                },
+
+                async _migrateV1(gist, headers) {
+                    const sys = this.parent;
+                    const fileNames = Object.keys(gist.files);
+                    const primaryFileName = fileNames[0];
+                    const gistFile = gist.files[primaryFileName];
+                    const hasRemoteChanges = sys.meta.lastGistDate !== gist.updated_at;
+                    const dirtyChunks = Array.isArray(sys.meta.dirtyChunks) ? sys.meta.dirtyChunks : [];
+                    const isLocalDirty = dirtyChunks.length > 0 || sys.meta.isDirty;
+                    const isGistEmpty = gistFile.content.trim() === '[]' || gistFile.content.trim() === '';
+                    const isLocalEmpty = sys.state.length === 0;
+                    let shouldPull = false;
+                    if (!sys.meta.lastGistDate) {
+                        if (!isGistEmpty && isLocalEmpty) shouldPull = true;
+                        else if (isGistEmpty && !isLocalEmpty) shouldPull = false;
+                        else if (!isGistEmpty && !isLocalEmpty) shouldPull = !isLocalDirty;
+                    } else {
+                        if (hasRemoteChanges && !isLocalDirty) shouldPull = true;
+                        else shouldPull = false;
+                    }
+                    if (shouldPull && !isGistEmpty) {
+                        let content = gistFile.content;
+                        if (gistFile.truncated && gistFile.raw_url) {
+                            const rawRes = await this.fetchWithTimeout(gistFile.raw_url, { headers });
+                            if (!rawRes.ok) throw new Error("Failed to fetch legacy file");
+                            content = await rawRes.text();
+                        }
+                        const gistData = JSON.parse(content);
+                        if (!Array.isArray(gistData)) throw new Error("Invalid format");
+                        sys.state = [];
+                        await db.clear('blocks');
+                        sys.state = gistData;
+                        for (const block of sys.state) {
+                            await db.put('blocks', block);
+                        }
+                    }
+                    const localChunks = sys.groupByChunk(sys.state);
+                    const newHashes = {};
+                    const files = {};
+                    for (const [key, blocks] of Object.entries(localChunks)) {
+                        const content = JSON.stringify(blocks);
+                        newHashes[key] = sys.fastHash(content);
+                        files[key + '.json'] = { content };
+                    }
+                    files['_albedo_manifest.json'] = {
+                        content: JSON.stringify({
+                            version: 2,
+                            blockCount: sys.state.length,
+                            chunks: newHashes
+                        })
+                    };
+                    files[primaryFileName] = { content: '{"migrated_to_v2": true}' };
+                    const patchRes = await this.fetchWithTimeout(
+                        `https://api.github.com/gists/${sys.meta.gistId}`,
+                        { method: 'PATCH', headers, body: JSON.stringify({ files }) }
+                    );
+                    if (!patchRes.ok) throw new Error(`Migration failed (${patchRes.status})`);
+                    const updatedGist = await patchRes.json();
+                    sys.meta.chunkHashes = newHashes;
+                    sys.meta.lastGistDate = updatedGist.updated_at;
+                    sys.meta.isDirty = false;
+                    sys.meta.dirtyChunks = [];
+                    sys.meta.lastSync = Date.now();
+                    sys.saveMeta();
+                    sys.updateTagsIndex();
+                    sys.render();
+                    sys.updateGistStatus();
+                    sys.notify("Migrated to chunked sync");
+                }
+            },
+
+            events: {
+                parent: null,
+                init(p) {
+                    this.parent = p;
+                    this.setupCommander();
+                    this.setupFileUploader();
+                    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+                        if (this.parent.meta.theme === 'auto') {
+                            this.parent.applyTheme();
+                        }
+                    });
+                    window.addEventListener('online', () => this.parent.updateNetworkStatus());
+                    window.addEventListener('offline', () => this.parent.updateNetworkStatus());
+                },
+
+                setupCommander() {
+                    const autoGrowCommander = () => {
+                        this.parent.ui.input.style.height = (this.parent.ui.input.scrollHeight) + "px";
+                    };
+
+                    const resetCommander = () => {
+                        this.parent.ui.input.value = '';
+                        this.parent.ui.input.style.height = 'auto';
+                        this.parent.ui.suggestion.classList.remove('active');
+                        this.parent.activeSuggestion = null;
+                    };
+
+                    this.parent.ui.input.addEventListener('input', (e) => {
+                        autoGrowCommander();
+                        const val = this.parent.ui.input.value;
+                        const words = val.split(/\s+/);
+                        const lastWord = words[words.length - 1];
+                        this.parent.activeSuggestion = null;
+
+                        if (lastWord.startsWith('#') && lastWord.length > 1) {
+                            const match = Array.from(this.parent.tagsIndex).sort()
+                                .find(t => t.toLowerCase().startsWith(lastWord.toLowerCase()) && t !== lastWord);
+                            if (match) {
+                                this.parent.activeSuggestion = match;
+                                this.parent.ui.suggestion.innerHTML = `<kbd>TAB</kbd> <b>${match}</b>`;
+                                this.parent.ui.suggestion.classList.add('active');
+                            } else {
+                                this.parent.ui.suggestion.classList.remove('active');
+                            }
+                        }
+                        else if (lastWord.startsWith('!') && lastWord.length > 1) {
+                            const match = this.parent.validColors.map(c => '!' + c)
+                                .find(c => c.startsWith(lastWord.toLowerCase()) && c !== lastWord.toLowerCase());
+                            if (match) {
+                                this.parent.activeSuggestion = match;
+                                this.parent.ui.suggestion.innerHTML = `<kbd>TAB</kbd> <b>${match}</b>`;
+                                this.parent.ui.suggestion.classList.add('active');
+                            } else {
+                                this.parent.ui.suggestion.classList.remove('active');
+                            }
+                        }
+                        else if (lastWord.startsWith('&') && lastWord.length > 0) {
+                            const match = this.parent.validExternals
+                                .find(cmd => cmd.startsWith(lastWord.toLowerCase()) && cmd !== lastWord.toLowerCase());
+                            if (match) {
+                                this.parent.activeSuggestion = match;
+                                this.parent.ui.suggestion.innerHTML = `<kbd>TAB</kbd> <b>${match}</b>`;
+                                this.parent.ui.suggestion.classList.add('active');
+                            } else {
+                                this.parent.ui.suggestion.classList.remove('active');
+                            }
+                        }
+                        else if (lastWord.startsWith('/') && lastWord.length > 0) {
+                            const match = Array.from(this.parent.foldersIndex).sort()
+                                .find(f => f.toLowerCase().startsWith(lastWord.toLowerCase()) && f !== lastWord.toLowerCase());
+                            if (match) {
+                                this.parent.activeSuggestion = match;
+                                this.parent.ui.suggestion.innerHTML = `<kbd>TAB</kbd> <b>${match}</b>`;
+                                this.parent.ui.suggestion.classList.add('active');
+                            } else {
+                                this.parent.ui.suggestion.classList.remove('active');
+                            }
+                        }
+                        else if ((lastWord.startsWith('~') || val.startsWith('?~')) && lastWord.length > 0) {
+                            let searchPrefix = '';
+                            if (lastWord.startsWith('?~')) searchPrefix = '~' + lastWord.substring(2);
+                            else if (lastWord.startsWith('~')) searchPrefix = lastWord;
+                            else if (val.startsWith('?~')) searchPrefix = '~' + lastWord;
+
+                            if (searchPrefix !== '~' && searchPrefix !== '') {
+                                const match = Array.from(this.parent.patternsIndex).sort()
+                                    .find(p => p.toLowerCase().startsWith(searchPrefix.toLowerCase()) && p !== searchPrefix.toLowerCase());
+                                if (match) {
+                                    if (lastWord.startsWith('?~')) this.parent.activeSuggestion = '?~' + match.substring(1);
+                                    else if (lastWord.startsWith('~')) this.parent.activeSuggestion = match + ':';
+                                    else this.parent.activeSuggestion = match.substring(1);
+                                    this.parent.ui.suggestion.innerHTML = `<kbd>TAB</kbd> <b>${this.parent.activeSuggestion}</b>`;
+                                    this.parent.ui.suggestion.classList.add('active');
+                                } else {
+                                    this.parent.ui.suggestion.classList.remove('active');
+                                }
+                            } else {
+                                this.parent.ui.suggestion.classList.remove('active');
+                            }
+                        }
+                        else {
+                            this.parent.ui.suggestion.classList.remove('active');
+                        }
+
+                        if (val.startsWith('?~')) {
+                            this.parent.ui.header.classList.add('query-mode');
+                            const cleanStr = val.substring(2).trim();
+                            const parts = cleanStr.split(/\s+/);
+                            let direction = 'c';
+                            let patternKey = '';
+                            if (parts[0].toLowerCase() === 'd' && parts.length > 1) {
+                                direction = 'd';
+                                patternKey = parts[1];
+                            } else if (parts[0]) {
+                                patternKey = parts[0];
+                            }
+                            if (patternKey) {
+                                const pattern = patternKey.startsWith('~') ? patternKey : '~' + patternKey;
+                                this.parent.requestRender({ type: 'sort', direction, pattern });
+                            } else {
+                                this.parent.requestRender({ type: 'search', query: val });
+                            }
+                        }
+                        else if (val.startsWith('?')) {
+                            this.parent.ui.header.classList.add('query-mode');
+                            this.parent.requestRender({ type: 'search', query: val.substring(1).trim() });
+                        } else {
+                            this.parent.ui.header.classList.remove('query-mode');
+                            if (this.parent.isFiltering) {
+                                this.parent.requestRender({});
+                                this.parent.isFiltering = false;
+                            }
+                        }
+                    });
+
+                    this.parent.ui.input.addEventListener('keydown', (e) => {
+                        if (e.key === 'Tab' && this.parent.activeSuggestion) {
+                            e.preventDefault();
+                            const words = this.parent.ui.input.value.split(/\s+/);
+                            words.pop();
+                            words.push(this.parent.activeSuggestion);
+                            this.parent.ui.input.value = words.join(' ') + ' ';
+                            this.parent.activeSuggestion = null;
+                            this.parent.ui.suggestion.classList.remove('active');
+                            autoGrowCommander();
+                            this.parent.ui.input.dispatchEvent(new Event('input'));
+                            return;
+                        }
+
+                        if (e.key === 'Enter' && !e.shiftKey) {
+                            e.preventDefault();
+                            const val = this.parent.ui.input.value.trim();
+                            if (val.startsWith('&dic:')) {
+                                const word = val.replace('&dic:', '').trim();
+                                if (word) this.parent.api.fetchDefinition(word);
+                                resetCommander();
+                                return;
+                            }
+                            else if (val.startsWith('&wiki:')) {
+                                const subject = val.replace('&wiki:', '').trim();
+                                if (subject) this.parent.api.fetchWikiSummary(subject);
+                                resetCommander();
+                                return;
+                            }
+                            else if (val.startsWith('&source:')) {
+                                const query = val.replace('&source:', '').trim();
+                                if (query) this.parent.api.fetchSources(query);
+                                resetCommander();
+                                return;
+                            }
+                            else if (val.startsWith('&github:')) {
+                                const creds = val.replace('&github:', '').trim().split(/\s+/);
+                                if (creds.length >= 2) {
+                                    this.parent.meta.gistToken = creds[0];
+                                    this.parent.meta.gistId = creds[1];
+                                    this.parent.saveMeta();
+                                    this.parent.updateGistStatus();
+                                    this.parent.notify("GitHub config saved");
+                                } else {
+                                    this.parent.notify("Error: &github: <TOKEN> <GIST_ID>");
+                                }
+                                resetCommander();
+                                return;
+                            }
+                            else if (val.startsWith('&sync:')) {
+                                this.parent.api.sync();
+                                resetCommander();
+                                return;
+                            }
+                            else if (val.startsWith('&meteo:')) {
+                                const query = val.replace('&meteo:', '').trim();
+                                if (query) this.parent.api.fetchMeteo(query);
+                                resetCommander();
+                                return;
+                            }
+                            else if (val.startsWith('/')) {
+                                const newFolder = val.trim();
+                                if (newFolder.length > 0) {
+                                    this.parent.currentFolder = newFolder;
+                                    this.parent.foldersIndex.add(newFolder);
+                                    this.parent.ui.folderLabel.innerText = newFolder;
+                                    this.parent.ui.folderLabel.title = `Current Folder: ${newFolder}`;
+                                    this.parent.requestRender({});
+                                }
+                                resetCommander();
+                                return;
+                            }
+                            if (val && !val.startsWith('?')) {
+                                this.parent.add(val);
+                                resetCommander();
+                            }
+                        }
+                        else if (e.key === 'Escape') {
+                            this.parent.ui.input.value = '';
+                            this.parent.ui.input.style.height = 'auto';
+                            this.parent.ui.header.classList.remove('query-mode');
+                            this.parent.ui.suggestion.classList.remove('active');
+                            this.parent.activeSuggestion = null;
+                            this.parent.render();
+                        }
+                    });
+                },
+
+                setupFileUploader() {
+                    document.getElementById('upload-trigger').addEventListener('change', (e) => {
+                        if (e.target.files.length > 0) {
+                            this.parent.loadCartridge(e.target.files[0]);
+                            e.target.value = '';
+                        }
+                    });
+                }
+            },
+
+            ui: {
+                header: document.getElementById('header'),
+                input: document.getElementById('commander'),
+                feed: document.getElementById('feed'),
+                stats: document.getElementById('stats'),
+                baseLabel: document.getElementById('base-label'),
+                folderLabel: document.getElementById('folder-label'),
+                toast: document.getElementById('toast'),
+                suggestion: document.getElementById('suggestion')
+            },
+
+            requestRender(options = {}) {
+                if (this.renderTID) clearTimeout(this.renderTID);
+                this.renderTID = setTimeout(() => {
+                    this.render(options);
+                }, 150);
+            },
+
+            async init() {
+                try {
+                    await db.init();
+                    const blocks = await db.getAll('blocks');
+                    const metas = await db.getAll('meta');
+                    this.state = blocks.sort((a, b) => b.ts - a.ts);
+                    if (metas.length > 0) {
+                        this.meta = { ...this.meta, ...metas[0] };
+                    }
+                    if (!this.meta.theme) this.meta.theme = 'auto';
+                } catch (err) {
+                    console.error("ALBEDO: Core Corruption", err);
+                    alert("FATAL ERROR: Memory Corrupted. Halting to prevent data overwrite.");
+                    return;
+                }
+                this.updateTagsIndex();
+                this.render();
+                this.api.init(this);
+                this.events.init(this);
+                this.applyTheme();
+                this.updateNetworkStatus();
+                this.updateGistStatus();
+                if (this.meta.gistToken && this.meta.gistId && navigator.onLine) {
+                    this.api.sync();
+                }
+            },
+
+            updateNetworkStatus() {
+                const netInd = document.getElementById('net-indicator');
+                if (netInd) {
+                    if (navigator.onLine) {
+                        netInd.className = 'is-online';
+                        netInd.title = 'Online';
+                    } else {
+                        netInd.className = 'is-offline';
+                        netInd.title = 'Offline';
+                    }
+                }
+            },
+
+            updateGistStatus() {
+                if (this.meta.gistToken && this.meta.gistId) {
+                    document.body.classList.add('has-gist');
+                } else {
+                    document.body.classList.remove('has-gist');
+                }
+                const syncInd = document.getElementById('sync-date');
+                const dateVal = this.meta.lastSync || this.meta.lastGistDate;
+                if (syncInd && dateVal) {
+                    const d = new Date(dateVal);
+                    const da = d.getDate().toString().padStart(2, '0');
+                    const mo = (d.getMonth() + 1).toString().padStart(2, '0');
+                    const ho = d.getHours().toString().padStart(2, '0');
+                    const mi = d.getMinutes().toString().padStart(2, '0');
+                    syncInd.innerText = `${da}/${mo} ${ho}:${mi}`;
+                } else if (syncInd) {
+                    syncInd.innerText = '';
+                }
+            },
+
+            applyTheme() {
+                const isDarkOS = window.matchMedia('(prefers-color-scheme: dark)').matches;
+                const isDarkTheme = this.meta.theme === 'dark' || (this.meta.theme === 'auto' && isDarkOS);
+                document.documentElement.setAttribute('data-theme', isDarkTheme ? 'dark' : 'light');
+                const btn = document.getElementById('theme-toggle');
+                if (btn) {
+                    const labels = { 'auto': 'Auto', 'dark': 'Dark', 'light': 'Light' };
+                    btn.innerText = labels[this.meta.theme] || 'Auto';
+                }
+            },
+
+            toggleTheme() {
+                const cycle = { 'auto': 'dark', 'dark': 'light', 'light': 'auto' };
+                this.meta.theme = cycle[this.meta.theme] || 'auto';
+                this.saveMeta();
+                this.applyTheme();
+                this.notify("Theme: " + this.meta.theme.charAt(0).toUpperCase() + this.meta.theme.slice(1));
+            },
+
+            updateTagsIndex() {
+                this.tagsIndex.clear();
+                this.patternsIndex.clear();
+                this.foldersIndex.clear();
+                this.foldersIndex.add('/');
+                if (this.currentFolder && this.currentFolder !== '/') {
+                    this.foldersIndex.add(this.currentFolder);
+                }
+                this.state.forEach(block => {
+                    (block.tags || []).forEach(t => this.tagsIndex.add(t));
+                    (block.patterns || []).forEach(p => {
+                        const key = p.split(':')[0];
+                        this.patternsIndex.add(key);
+                    });
+                    if (block.folder && block.folder !== '/') {
+                        this.foldersIndex.add(block.folder);
+                    }
+                });
+            },
+
+            escape(str) {
+                if (!str) return '';
+                return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+            },
+
+            escapeRegExp(string) {
+                return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            },
+
+            format(str, query = '') {
+                let s = this.escape(str);
+                s = s.replace(/^## (.*$)\n?/gm, '<div class="md-h2">$1</div>');
+                s = s.replace(/^# (.*$)\n?/gm, '<div class="md-h1">$1</div>');
+                s = s.replace(/^&gt; (.*$)\n?/gm, '<div class="md-quote">$1</div>');
+                s = s.replace(/\*\*(.*?)\*\*/g, '<b>$1</b>');
+                s = s.replace(/\*(.*?)\*/g, '<i>$1</i>');
+                s = s.replace(/\[(.*?)\]\((.*?)\)/g, (match, text, url) => {
+                    const cleanUrl = (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('mailto:')) ? url : '#';
+                    return `<a href="${cleanUrl}" target="_blank" style="color: var(--accent); text-decoration: underline;">${text}</a>`;
+                });
+                const wikiRegex = /https:\/\/upload\.wikimedia\.org\/wikipedia\/commons\/([^\s"'<>]+)/gi;
+                s = s.replace(wikiRegex, (match, path) => {
+                    let src = match;
+                    if (!path.startsWith('thumb/')) {
+                        const parts = path.split('/');
+                        const filename = parts[parts.length - 1];
+                        const ext = filename.split('.').pop().toLowerCase();
+                        if (['jpg', 'jpeg', 'png', 'webp'].includes(ext)) {
+                            src = `https://upload.wikimedia.org/wikipedia/commons/thumb/${path}/640px-${filename}`;
+                        } else if (ext === 'svg') {
+                            src = `https://upload.wikimedia.org/wikipedia/commons/thumb/${path}/640px-${filename}.png`;
+                        }
+                    }
+                    return `<img src="${src}" class="wiki-img" loading="lazy" decoding="async" alt="Wiki Media">`;
+                });
+                s = s.replace(/`(.*?)`/g, '<code>$1</code>');
+                if (query) {
+                    const termsToHighlight = query.split(/\s+/)
+                        .filter(term => !['AND', 'OR', 'NOT'].includes(term))
+                        .map(term => this.escapeRegExp(term));
+                    if (termsToHighlight.length > 0) {
+                        const safeQueryGroup = termsToHighlight.join('|');
+                        const regex = new RegExp(`(${safeQueryGroup})(?![^<]*>)`, 'gi');
+                        s = s.replace(regex, '<mark>$1</mark>');
+                    }
+                }
+                return s;
+            },
+
+            parse(raw) {
+                const tags = [];
+                const patterns = [];
+                let color = null;
+                let text = raw.trim();
+                while (text.startsWith('#') || text.startsWith('!') || text.startsWith('~')) {
+                    const spaceIdx = text.search(/\s/);
+                    const token = spaceIdx === -1 ? text : text.substring(0, spaceIdx);
+                    if (token.startsWith('#')) {
+                        tags.push(token);
+                    } else if (token.startsWith('~')) {
+                        patterns.push(token);
+                    } else if (token.startsWith('!')) {
+                        const colorAttempt = token.substring(1).toLowerCase();
+                        if (this.validColors.includes(colorAttempt)) {
+                            color = colorAttempt;
+                        }
+                    }
+                    if (spaceIdx === -1) {
+                        text = ''; break;
+                    } else {
+                        text = text.substring(spaceIdx).trimStart();
+                    }
+                }
+                return { tags, patterns, color, text };
+            },
+
+            add(raw) {
+                if (!raw.trim()) return;
+                const data = this.parse(raw);
+                const block = {
+                    id: crypto.randomUUID(),
+                    ts: Date.now(),
+                    isPinned: false,
+                    raw: raw,
+                    color: data.color,
+                    tags: data.tags,
+                    patterns: data.patterns,
+                    body: data.text,
+                    folder: this.currentFolder
+                };
+                this.state.unshift(block);
+                this.updateTagsIndex();
+                this.render();
+                db.put('blocks', block).catch(err => {
+                    console.error('ALBEDO: Failed to persist new block', err);
+                    this.notify('Storage error — block may not persist');
+                });
+                this.markDirty(block.id);
+            },
+
+            update(id, newRaw) {
+                const idx = this.state.findIndex(x => x.id === id);
+                if (idx === -1) return;
+                if (!newRaw.trim()) {
+                    this.remove(id);
+                } else {
+                    const data = this.parse(newRaw);
+                    this.state[idx].raw = newRaw;
+                    this.state[idx].tags = data.tags;
+                    this.state[idx].patterns = data.patterns;
+                    this.state[idx].color = data.color;
+                    this.state[idx].body = data.text;
+                    this.updateTagsIndex();
+                    this.render();
+                    db.put('blocks', this.state[idx]).catch(err => {
+                        console.error('ALBEDO: Failed to persist block update', err);
+                        this.notify('Storage error — edit may not persist');
+                    });
+                    this.markDirty(id);
+                }
+            },
+
+            remove(id) {
+                this.state = this.state.filter(x => x.id !== id);
+                this.updateTagsIndex();
+                this.render();
+                db.delete('blocks', id).catch(err => {
+                    console.error('ALBEDO: Failed to delete block from storage', err);
+                    this.notify('Storage error — deletion may not persist');
+                });
+                this.markDirty(id);
+            },
+
+            togglePin(id) {
+                const idx = this.state.findIndex(x => x.id === id);
+                if (idx === -1) return;
+                this.state[idx].isPinned = !this.state[idx].isPinned;
+                this.render();
+                db.put('blocks', this.state[idx]).catch(err => {
+                    console.error('ALBEDO: Failed to persist pin toggle', err);
+                });
+                this.markDirty(id);
+            },
+
+            getChunkKey(blockId) {
+                return 'albedo_' + blockId.charAt(0).toLowerCase();
+            },
+
+            groupByChunk(blocks) {
+                const chunks = {};
+                for (const block of blocks) {
+                    const key = this.getChunkKey(block.id);
+                    if (!chunks[key]) chunks[key] = [];
+                    chunks[key].push(block);
+                }
+                return chunks;
+            },
+
+            fastHash(str) {
+                let h = 5381;
+                for (let i = 0; i < str.length; i++) {
+                    h = ((h << 5) + h) + str.charCodeAt(i);
+                    h |= 0;
+                }
+                return (h >>> 0).toString(36);
+            },
+
+            markDirty(blockId) {
+                if (!Array.isArray(this.meta.dirtyChunks)) this.meta.dirtyChunks = [];
+                if (blockId) {
+                    const chunk = this.getChunkKey(blockId);
+                    if (!this.meta.dirtyChunks.includes(chunk)) {
+                        this.meta.dirtyChunks.push(chunk);
+                    }
+                } else {
+                    const allChunks = [...new Set(this.state.map(b => this.getChunkKey(b.id)))];
+                    for (const c of allChunks) {
+                        if (!this.meta.dirtyChunks.includes(c)) this.meta.dirtyChunks.push(c);
+                    }
+                }
+                this.meta.isDirty = this.meta.dirtyChunks.length > 0;
+                this.saveMeta();
+            },
+
+            saveMeta() { db.put('meta', this.meta); },
+
+            getExportFilename(ext) {
+                let identifier = this.meta.name.toLowerCase();
+                if (this.currentRenderOptions && this.currentRenderOptions.query) {
+                    const safeQ = this.currentRenderOptions.query.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+                    identifier += `_search-${safeQ}`;
+                } else if (this.currentRenderOptions && this.currentRenderOptions.pattern) {
+                    const safeP = this.currentRenderOptions.pattern.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+                    identifier += `_sort-${safeP}`;
+                }
+                return `albedo_${identifier}_${this.getDateCode()}.${ext}`;
+            },
+
+            exportJSON() {
+                const filename = this.getExportFilename('json');
+                this.downloadFile(JSON.stringify(this.currentViewData, null, 2), filename, 'application/json');
+                const count = this.currentViewData.length;
+                this.notify(`Exported ${count} Block${count > 1 ? 's' : ''}`);
+            },
+
+            exportMD() {
+                let md = `# ALBEDO EXPORT: ${this.meta.name}\n\n`;
+                if (this.currentRenderOptions && this.currentRenderOptions.query) {
+                    md += `> Filtered by query: "${this.currentRenderOptions.query}"\n\n`;
+                }
+                this.currentViewData.forEach(block => {
+                    const d = new Date(block.ts);
+                    const ts = d.toISOString().split('T')[0];
+                    const metaTags = (block.tags || []).join(' ') + (block.color ? ` !${block.color}` : '');
+                    const patterns = (block.patterns || []).join(' ');
+                    const allMeta = [ts, metaTags, patterns].filter(Boolean).join(' ');
+                    md += `### ${allMeta}\n${block.body}\n\n---\n\n`;
+                });
+                const filename = this.getExportFilename('md');
+                this.downloadFile(md, filename, 'text/markdown');
+                const count = this.currentViewData.length;
+                this.notify(`Exported ${count} Block${count > 1 ? 's' : ''}`);
+            },
+
+            downloadFile(content, filename, type) {
+                const blob = new Blob([content], { type: type });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url; a.download = filename; a.click();
+                URL.revokeObjectURL(url);
+            },
+
+            async loadCartridge(file) {
+                const isPopulated = this.state.length > 0;
+                let mode = 'replace';
+                if (isPopulated) {
+                    const choice = await this.modal(`Merge "${file.name}" with current base?`, 'confirm', 'Merge', 'Replace');
+                    if (!choice) {
+                        const confirmWipe = await this.modal(`WARNING: This will wipe your local memory before loading. Proceed?`, 'confirm', 'Proceed', 'Cancel');
+                        if (!confirmWipe) return;
+                        mode = 'replace';
+                    } else {
+                        mode = 'merge';
+                    }
+                }
+                const reader = new FileReader();
+                reader.onload = async (e) => {
+                    try {
+                        const json = JSON.parse(e.target.result);
+                        if (!Array.isArray(json)) throw new Error("Invalid Format");
+                        if (!json.every(b => b && typeof b.id === 'string' && typeof b.ts === 'number' && typeof b.raw === 'string')) {
+                            throw new Error("Invalid Format");
+                        }
+                        if (mode === 'replace') {
+                            await this.wipe(true);
+                            this.state = json;
+                            const baseName = file.name.replace(/\.[^/.]+$/, "").toUpperCase().replace("ALBEDO_", "");
+                            this.meta.name = baseName || "IMPORTED";
+                            for (const block of this.state) {
+                                await db.put('blocks', block);
+                            }
+                            this.notify(`Base Loaded: ${this.meta.name}`);
+                        }
+                        else if (mode === 'merge') {
+                            let mergedCount = 0;
+                            let addedCount = 0;
+                            for (const incoming of json) {
+                                const localIdx = this.state.findIndex(b => b.id === incoming.id);
+                                if (localIdx === -1) {
+                                    this.state.push(incoming);
+                                    await db.put('blocks', incoming);
+                                    addedCount++;
+                                } else {
+                                    if (incoming.ts > this.state[localIdx].ts) {
+                                        this.state[localIdx] = incoming;
+                                        await db.put('blocks', incoming);
+                                        mergedCount++;
+                                    }
+                                }
+                            }
+                            this.state.sort((a, b) => b.ts - a.ts);
+                            this.notify(`Merged: +${addedCount} / ^${mergedCount}`);
+                        }
+                        this.markDirty();
+                        this.updateTagsIndex();
+                        this.render();
+                    } catch (err) {
+                        await this.modal("Corrupt Cartridge", 'alert');
+                        console.error(err);
+                    }
+                };
+                reader.readAsText(file);
+            },
+
+            async wipe(silent = false) {
+                if (!silent) {
+                    const confirmed = await this.modal("CLEAR MEMORY?", 'confirm', 'Clear', 'Cancel');
+                    if (!confirmed) return;
+                }
+                this.state = [];
+                this.meta.name = "PRIMARY";
+                await db.clear('blocks');
+                this.markDirty();
+                this.updateTagsIndex();
+                this.render();
+                if (!silent) this.notify("Memory Cleared");
+            },
+
+            setupObserver() {
+                if (this.observer) this.observer.disconnect();
+                this.observer = new IntersectionObserver((entries) => {
+                    if (entries[0].isIntersecting) {
+                        this.renderMore();
+                    }
+                }, { rootMargin: "300px" });
+            },
+
+            render(options = {}) {
+                this.currentRenderOptions = options;
+                const type = options.type || null;
+                const query = options.query || '';
+                const pattern = options.pattern || '';
+                const direction = options.direction || 'c';
+                this.isFiltering = !!type;
+                let viewData = [...this.state];
+
+                if (type === 'search' && query) {
+                    const tokens = query.split(/\s+/).filter(t => t.trim() !== '');
+                    const hasOperators = tokens.some(t => ['AND', 'OR', 'NOT'].includes(t));
+                    if (!hasOperators) {
+                        viewData = viewData.filter(item => item.raw.toLowerCase().includes(query.toLowerCase()));
+                    } else {
+                        viewData = viewData.filter(item => {
+                            const rawText = item.raw.toLowerCase();
+                            let result = false;
+                            let currentOp = 'OR';
+                            let invertNext = false;
+                            for (let i = 0; i < tokens.length; i++) {
+                                const t = tokens[i];
+                                if (t === 'NOT') { invertNext = true; continue; }
+                                if (t === 'AND' || t === 'OR') { currentOp = t; continue; }
+                                const termMatched = rawText.includes(t.toLowerCase());
+                                const finalMatch = invertNext ? !termMatched : termMatched;
+                                if (currentOp === 'AND') {
+                                    result = result && finalMatch;
+                                } else if (currentOp === 'OR') {
+                                    result = result || finalMatch;
+                                }
+                                invertNext = false;
+                            }
+                            return result;
+                        });
+                    }
+                }
+                else if (type === 'sort' && pattern) {
+                    viewData = viewData.filter(item =>
+                        (item.patterns || []).some(p => p.startsWith(pattern + ':') || p === pattern)
+                    );
+                }
+
+                viewData = viewData.filter(item => {
+                    if (this.currentFolder === '/') return true;
+                    const itemFolder = item.folder || '/';
+                    return itemFolder === this.currentFolder;
+                });
+
+                viewData.sort((a, b) => {
+                    if (type === 'sort' && pattern) {
+                        const pA = (a.patterns || []).find(p => p.startsWith(pattern + ':') || p === pattern) || '';
+                        const pB = (b.patterns || []).find(p => p.startsWith(pattern + ':') || p === pattern) || '';
+                        const valA = pA.includes(':') ? pA.substring(pattern.length + 1) : '';
+                        const valB = pB.includes(':') ? pB.substring(pattern.length + 1) : '';
+                        const dirMulti = direction === 'd' ? -1 : 1;
+                        return dirMulti * valA.localeCompare(valB, undefined, { numeric: true, sensitivity: 'base' });
+                    }
+                    const aPinned = !!a.isPinned;
+                    const bPinned = !!b.isPinned;
+                    if (aPinned === bPinned) return b.ts - a.ts;
+                    return aPinned ? -1 : 1;
+                });
+
+                this.ui.baseLabel.innerText = this.meta.name;
+                this.currentViewData = viewData;
+                this.renderedCount = 0;
+                this.ui.feed.innerHTML = '';
+
+                if (this.currentViewData.length === 0) {
+                    this.ui.feed.innerHTML = `<div class="void-msg">${this.isFiltering ? 'NO MATCHES' : 'EMPTY'}</div>`;
+                    this.updateStats();
+                    return;
+                }
+                this.renderMore();
+            },
+
+            renderMore() {
+                if (this.renderedCount >= this.currentViewData.length) return;
+                if (this.observer) this.observer.disconnect();
+
+                const fragment = document.createDocumentFragment();
+                const nextBatch = this.currentViewData.slice(this.renderedCount, this.renderedCount + this.viewLimit);
+                const type = this.currentRenderOptions.type || null;
+                const query = this.currentRenderOptions.query || '';
+                const pattern = this.currentRenderOptions.pattern || '';
+
+                nextBatch.forEach(block => {
+                    const el = document.createElement('div');
+                    const d = new Date(block.ts);
+                    const timeStr = `${d.getMonth() + 1}/${d.getDate()} ${d.getHours()}:${d.getMinutes().toString().padStart(2, '0')}`;
+                    const formattedBody = this.format(block.body, type === 'search' ? query : '');
+
+                    const tagsHtml = (block.tags || []).map(t => {
+                        let displayTag = this.escape(t);
+                        if (type === 'search' && query) {
+                            const termsToHighlight = query.split(/\s+/)
+                                .filter(term => !['AND', 'OR', 'NOT'].includes(term))
+                                .map(term => this.escapeRegExp(term));
+                            if (termsToHighlight.length > 0) {
+                                const safeQGroup = termsToHighlight.join('|');
+                                displayTag = displayTag.replace(new RegExp(`(${safeQGroup})`, 'gi'), '<mark>$1</mark>');
+                            }
+                        }
+                        return `<span class="token">${displayTag}</span>`;
+                    }).join('');
+
+                    const patternsHtml = (block.patterns || []).map(p => {
+                        let cleanPattern = this.escape(p).replace(/^~/, '');
+                        let displayPattern = cleanPattern;
+                        const colonIdx = cleanPattern.indexOf(':');
+                        if (colonIdx !== -1) {
+                            const key = cleanPattern.substring(0, colonIdx + 1);
+                            const val = cleanPattern.substring(colonIdx + 1);
+                            displayPattern = `${key}<strong>${val}</strong>`;
+                        }
+                        if (type === 'sort' && pattern && p.startsWith(pattern)) {
+                            displayPattern = `<mark style="padding: 0 2px;">${displayPattern}</mark>`;
+                        }
+                        return `<span class="token-pattern">${displayPattern}</span>`;
+                    }).join('');
+
+                    const pinClass = block.isPinned ? ' is-pinned' : '';
+                    const pinActive = block.isPinned ? ' active' : '';
+                    let colorClass = block.color ? ' has-color' : '';
+
+                    el.className = `block${colorClass}${pinClass}`;
+
+                    if (block.color) {
+                        el.style.setProperty('--b-bg', `var(--c-${block.color}-bg)`);
+                        el.style.setProperty('--b-ink', `var(--c-${block.color}-ink)`);
+                    }
+
+                    el.innerHTML = `
+                        <div class="block-header">
+                            <span>${timeStr}</span>
+                            <div class="action-btns">
+                                <button class="action-btn pin-btn${pinActive}" aria-label="Pin" onclick="sys.togglePin('${block.id}')">*</button>
+                                <button class="action-btn del-btn" aria-label="Delete" onclick="sys.remove('${block.id}')">x</button>
+                            </div>
+                        </div>
+                        <div class="content" id="b-${block.id}" onclick="sys.edit('${block.id}')">${tagsHtml}${patternsHtml}${formattedBody}</div>
+                    `;
+                    fragment.appendChild(el);
+                });
+
+                this.ui.feed.appendChild(fragment);
+                this.renderedCount += nextBatch.length;
+                this.updateStats();
+
+                if (this.renderedCount < this.currentViewData.length) {
+                    if (!this.observer) this.setupObserver();
+                    const lastChild = this.ui.feed.lastElementChild;
+                    if (lastChild) this.observer.observe(lastChild);
+                }
+            },
+
+            edit(id) {
+                const block = this.state.find(x => x.id === id);
+                if (!block) return;
+                const display = document.getElementById(`b-${id}`);
+                if (!display || display.tagName === 'TEXTAREA') return;
+                const area = document.createElement('textarea');
+                area.className = 'editor';
+                area.value = block.raw;
+                const autoGrow = () => {
+                    area.style.height = 'auto';
+                    area.style.height = (area.scrollHeight + 5) + "px";
+                };
+                setTimeout(autoGrow, 0);
+                area.addEventListener('input', autoGrow);
+                area.onblur = () => this.update(id, area.value);
+                area.onkeydown = (e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault(); area.blur();
+                    }
+                };
+                display.replaceWith(area);
+                area.focus();
+            },
+
+            updateStats() {
+                const count = this.state.length;
+                try {
+                    const bytes = new TextEncoder().encode(JSON.stringify(this.state)).length;
+                    const kb = (bytes / 1024).toFixed(2);
+                    this.ui.stats.innerText = `${count} UNITS | ${kb} KB`;
+                } catch (e) {
+                    this.ui.stats.innerText = `${count} UNITS`;
+                }
+            },
+
+            getDateCode() {
+                const d = new Date();
+                return `${d.getFullYear()}${(d.getMonth() + 1).toString().padStart(2, '0')}${d.getDate().toString().padStart(2, '0')}`;
+            },
+
+            modal(msg, type = 'alert', btnConfirm = 'OK', btnCancel = 'Cancel') {
+                return new Promise((resolve) => {
+                    const overlay = document.createElement('div');
+                    overlay.style.cssText = "position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:1000;";
+                    const box = document.createElement('div');
+                    box.style.cssText = "background:var(--bg);padding:16px;border:2px solid var(--border);max-width:400px;width:90%;font-family:var(--font);color:var(--ink);text-align:center;";
+                    const text = document.createElement('div');
+                    text.innerText = msg;
+                    text.style.cssText = "margin-bottom:16px;white-space:pre-wrap;line-height:1.4;font-size:13px;";
+                    const actions = document.createElement('div');
+                    actions.style.cssText = "display:flex;gap:8px;justify-content:center;";
+                    const btn1 = document.createElement('button');
+                    btn1.innerText = btnConfirm;
+                    btn1.style.cssText = "padding:4px 12px;border:2px solid var(--border);cursor:pointer;background:var(--ink);color:var(--bg);font-weight:bold;font-family:var(--font);font-size:12px;";
+                    btn1.onclick = () => { overlay.remove(); resolve(true); };
+                    if (type === 'confirm') {
+                        const btn2 = document.createElement('button');
+                        btn2.innerText = btnCancel;
+                        btn2.style.cssText = "padding:4px 12px;border:2px solid var(--border);cursor:pointer;background:var(--bg);color:var(--ink);font-weight:bold;font-family:var(--font);font-size:12px;";
+                        btn2.onclick = () => { overlay.remove(); resolve(false); };
+                        actions.appendChild(btn2);
+                    }
+                    actions.appendChild(btn1);
+                    box.appendChild(text);
+                    box.appendChild(actions);
+                    overlay.appendChild(box);
+                    document.body.appendChild(overlay);
+                });
+            },
+
+            notify(msg) {
+                const t = this.ui.toast;
+                clearTimeout(this.toastTid);
+                t.innerText = msg;
+                t.classList.add('active');
+                this.toastTid = setTimeout(() => t.classList.remove('active'), 2500);
+            },
+
+            showTree() {
+                const overlay = document.createElement('div');
+                overlay.style.cssText = "position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:1000;";
+                const box = document.createElement('div');
+                box.style.cssText = "background:var(--bg);padding:16px;border:2px solid var(--border);max-width:400px;width:90%;font-family:var(--font);color:var(--ink);max-height:80vh;overflow-y:auto;display:flex;flex-direction:column;gap:4px;";
+                const title = document.createElement('div');
+                title.innerText = "FOLDERS";
+                title.style.cssText = "font-weight:bold;font-size:12px;text-transform:uppercase;color:var(--meta);margin-bottom:8px;text-align:center;";
+                box.appendChild(title);
+                const sortedFolders = Array.from(this.foldersIndex).sort();
+                sortedFolders.forEach(folder => {
+                    const btn = document.createElement('button');
+                    btn.innerText = folder;
+                    const isCurrent = folder === this.currentFolder;
+                    btn.style.cssText = `text-align:left;padding:4px 8px;border:1px solid ${isCurrent ? 'var(--accent)' : 'var(--border)'};cursor:pointer;background:${isCurrent ? 'var(--accent-dim)' : 'var(--bg)'};color:${isCurrent ? 'var(--accent)' : 'var(--ink)'};font-family:var(--font);font-size:13px;`;
+                    btn.onclick = () => {
+                        overlay.remove();
+                        if (!isCurrent) {
+                            this.currentFolder = folder;
+                            this.ui.folderLabel.innerText = folder;
+                            this.ui.folderLabel.title = `Current Folder: ${folder}`;
+                            this.requestRender({});
+                            this.notify(`Directory: ${folder}`);
+                        }
+                    };
+                    box.appendChild(btn);
+                });
+                const closeBtn = document.createElement('button');
+                closeBtn.innerText = "Close";
+                closeBtn.style.cssText = "margin-top:8px;padding:4px 12px;border:2px solid var(--border);cursor:pointer;background:var(--ink);color:var(--bg);font-weight:bold;font-family:var(--font);font-size:12px;";
+                closeBtn.onclick = () => overlay.remove();
+                box.appendChild(closeBtn);
+                overlay.onclick = (e) => { if (e.target === overlay) overlay.remove(); };
+                overlay.appendChild(box);
+                document.body.appendChild(overlay);
+            }
+        };
+
+        sys.init();
+    </script>
+</body>
+
+</html>
